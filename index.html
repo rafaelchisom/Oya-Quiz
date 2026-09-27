@@ -107,13 +107,39 @@ input{font:inherit}
 .count{font-family:var(--display);font-size:44px;line-height:1}
 
 .avatars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-.av{border:3px solid transparent;background:var(--night);border-radius:14px;aspect-ratio:1;max-width:100%;font-size:clamp(24px,6vw,32px);line-height:1;display:grid;place-items:center;padding:0;transition:transform .1s}
-.av:hover{transform:scale(1.08)}
-.av[aria-pressed="true"]{border-color:var(--sun);background:var(--night-3);transform:scale(1.08)}
+@media (max-width:520px){.avatars{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.av{border:3px solid transparent;background:transparent;border-radius:16px;aspect-ratio:1;max-width:100%;display:grid;place-items:center;padding:3px;transition:transform .1s}
+.av svg{width:100%;height:100%;display:block}
+.av:hover{transform:scale(1.06)}
+.av[aria-pressed="true"]{border-color:var(--sun);background:var(--night);box-shadow:0 0 0 3px #F5C9A8;transform:scale(1.06)}
+.avname{font-family:var(--display);color:var(--sun);font-size:18px;letter-spacing:0;text-transform:none}
 .pchip .pa{margin-right:6px}
-.face{font-size:1.15em;line-height:1}
-.bigface{font-size:96px;line-height:1;animation:popin .5s cubic-bezier(.2,1.6,.4,1) both}
-.step .face{font-size:clamp(44px,8vw,68px)}
+.face{display:inline-block;width:1.7em;height:1.7em;vertical-align:middle;flex:none}
+.face.emo{width:auto;height:auto;font-size:1.15em;line-height:1}
+.bigface{width:132px;height:132px;display:block;animation:popin .5s cubic-bezier(.2,1.6,.4,1) both}
+.bigface.emo{width:auto;height:auto;font-size:96px;line-height:1}
+.chipface{width:34px;height:34px;display:block;flex:none}
+.chipface.emo{width:auto;height:auto;font-size:18px}
+.pchip{display:inline-flex;align-items:center;gap:8px}
+.step .face{width:clamp(64px,10vw,96px);height:clamp(64px,10vw,96px)}
+/* podium moves: they start once the blocks have risen */
+.dancer{position:relative;display:inline-block;transform-origin:50% 100%}
+.dancer .face{display:block}
+.p1 .dancer{animation:victory .9s ease-in-out 1.6s infinite}
+.p2 .dancer{animation:shimmy .55s ease-in-out 1.2s infinite alternate}
+.p3 .dancer{animation:hop .7s cubic-bezier(.3,0,.4,1) .9s infinite}
+@keyframes victory{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-16px) rotate(-10deg)}50%{transform:translateY(0) rotate(0)}75%{transform:translateY(-16px) rotate(10deg)}}
+@keyframes shimmy{from{transform:translateX(-7px) rotate(-8deg)}to{transform:translateX(7px) rotate(8deg)}}
+@keyframes hop{0%,60%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(0) scale(1.08,.9)}30%{transform:translateY(-22px) scale(.95,1.06)}}
+.crown{position:absolute;left:50%;top:-30%;width:62%;transform:translateX(-50%);animation:crowndrop .7s cubic-bezier(.3,1.6,.5,1) 1.3s both}
+@keyframes crowndrop{from{transform:translate(-50%,-160%) rotate(-25deg);opacity:0}to{transform:translate(-50%,0) rotate(-8deg);opacity:1}}
+.glove{position:absolute;top:38%;width:44%;animation:jab 1.2s ease-in 1.8s infinite both}
+.glove.r{left:88%}
+.glove.l{right:88%;transform:scaleX(-1)}
+.glove.l{animation-name:jabl;animation-delay:2.4s}
+@keyframes jab{0%,40%,100%{transform:translateX(0) scale(.9);opacity:0}45%{opacity:1}55%{transform:translateX(26px) scale(1.15);opacity:1}70%{transform:translateX(0) scale(.95);opacity:1}90%{opacity:0}}
+@keyframes jabl{0%,40%,100%{transform:scaleX(-1) translateX(0) scale(.9);opacity:0}45%{opacity:1}55%{transform:scaleX(-1) translateX(26px) scale(1.15);opacity:1}70%{transform:scaleX(-1) translateX(0) scale(.95);opacity:1}90%{opacity:0}}
+.bigface.winner{animation:popin .5s cubic-bezier(.2,1.6,.4,1) both, victory .9s ease-in-out .6s infinite;transform-origin:50% 100%}
 
 .ai{display:flex;flex-direction:column;gap:14px;border:2px dashed var(--line);border-radius:20px;padding:18px;background:linear-gradient(135deg,rgba(255,216,77,.08),rgba(165,94,234,.1))}
 .ai h3{font-family:var(--display);font-weight:400;font-size:26px;margin:0}
@@ -419,7 +445,16 @@ const ANS = [
   {c:"var(--c)", fg:"var(--c-fg)", l:"C"},
   {c:"var(--d)", fg:"var(--d-fg)", l:"D"}
 ];
-const AVATARS = ["🦁","🐯","🐼","🦊","🐸","🐙","🦄","🐵","🦖","🐧","🦉","🐝","🐢","🦩","🐨","🐷","👑","🌶️","🍕","🎧","⚽","🚀","💃","🕺"];
+/* Meme-mood avatars: original drawings, keyed by id (stored in the database). */
+const MOODS = [{"id": "sideeye", "label": "Side Eye", "alt": "Side Eye: suspicious sideways glance", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F6C9A8\"/><circle cx=\"60\" cy=\"38\" r=\"27\" fill=\"#2A1F14\"/><circle cx=\"60\" cy=\"68\" r=\"34\" fill=\"#8D5524\"/><ellipse cx=\"47\" cy=\"66\" rx=\"9\" ry=\"6.5\" fill=\"#FFFAF1\"/><ellipse cx=\"73\" cy=\"66\" rx=\"9\" ry=\"6.5\" fill=\"#FFFAF1\"/><circle cx=\"53\" cy=\"67\" r=\"3.6\" fill=\"#2A1F14\"/><circle cx=\"79\" cy=\"67\" r=\"3.6\" fill=\"#2A1F14\"/><rect x=\"37\" y=\"58\" width=\"20\" height=\"5.5\" fill=\"#8D5524\"/><rect x=\"63\" y=\"58\" width=\"20\" height=\"5.5\" fill=\"#8D5524\"/><path d=\"M38 55 L56 57 M64 54 L82 49\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><path d=\"M49 86 L71 83\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/>"}, {"id": "shook", "label": "Shook", "alt": "Shook: jaw on the floor", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#CFE3D2\"/><circle cx=\"60\" cy=\"66\" r=\"34\" fill=\"#C68642\"/><path d=\"M26 62 Q28 30 60 30 Q92 30 94 62 Q86 44 60 43 Q34 44 26 62 Z\" fill=\"#2A1F14\"/><circle cx=\"47\" cy=\"64\" r=\"9.5\" fill=\"#FFFAF1\"/><circle cx=\"73\" cy=\"64\" r=\"9.5\" fill=\"#FFFAF1\"/><circle cx=\"47\" cy=\"64\" r=\"3.6\" fill=\"#2A1F14\"/><circle cx=\"73\" cy=\"64\" r=\"3.6\" fill=\"#2A1F14\"/><path d=\"M38 49 Q46 44 54 49 M66 49 Q74 44 82 49\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><ellipse cx=\"60\" cy=\"88\" rx=\"7\" ry=\"10\" fill=\"#5A1E14\"/><path d=\"M92 44 q-5 8 0 11 q5 -3 0 -11 z\" fill=\"#4DA3FF\"/>"}, {"id": "calculating", "label": "Calculating", "alt": "Calculating: squinting with maths in the air", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#D7D8F5\"/><circle cx=\"60\" cy=\"66\" r=\"34\" fill=\"#6B3E1C\"/><path d=\"M74 44 Q80 46 82 52\" stroke=\"#9A6A45\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M40 55 L56 60 M80 55 L64 60\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><path d=\"M40 66 L55 64 M65 64 L80 66\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><path d=\"M52 86 q4 -3 8 0 q4 3 8 0\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M20 22 V36 M13 29 H27\" stroke=\"#3B3F9E\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M92 28 H106\" stroke=\"#3B3F9E\" stroke-width=\"4\" stroke-linecap=\"round\"/><circle cx=\"99\" cy=\"21\" r=\"2.6\" fill=\"#3B3F9E\"/><circle cx=\"99\" cy=\"35\" r=\"2.6\" fill=\"#3B3F9E\"/><path d=\"M96 92 H110 M96 100 H110\" stroke=\"#3B3F9E\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M8 88 L13 96 L20 76 H28\" stroke=\"#3B3F9E\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"}, {"id": "unbothered", "label": "Unbothered", "alt": "Unbothered: sunglasses on, sipping a drink", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F9E1A1\"/><circle cx=\"60\" cy=\"40\" r=\"16\" fill=\"#2A1F14\"/><circle cx=\"60\" cy=\"66\" r=\"34\" fill=\"#E0AC69\"/><path d=\"M28 58 Q30 34 60 34 Q90 34 92 58 Q80 46 60 46 Q40 46 28 58 Z\" fill=\"#2A1F14\"/><rect x=\"35\" y=\"58\" width=\"23\" height=\"13\" rx=\"5\" fill=\"#2A1F14\"/><rect x=\"62\" y=\"58\" width=\"23\" height=\"13\" rx=\"5\" fill=\"#2A1F14\"/><path d=\"M58 62 H62\" stroke=\"#2A1F14\" stroke-width=\"3\"/><path d=\"M40 62 L45 60 M67 62 L72 60\" stroke=\"#FFFAF1\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M50 85 Q60 90 71 81\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"86\" y=\"80\" width=\"18\" height=\"26\" rx=\"4\" fill=\"#FFFAF1\" stroke=\"#2A1F14\" stroke-width=\"2.5\"/><rect x=\"86\" y=\"88\" width=\"18\" height=\"6\" fill=\"#D93A31\"/><path d=\"M97 80 L90 64\" stroke=\"#D93A31\" stroke-width=\"3\" stroke-linecap=\"round\"/>"}, {"id": "cryinglaugh", "label": "Crying Laughing", "alt": "Crying Laughing: tears of joy", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F7C6CF\"/><circle cx=\"60\" cy=\"66\" r=\"34\" fill=\"#8D5524\"/><path d=\"M26 60 Q30 28 60 28 Q90 28 94 60 Q82 40 60 40 Q38 40 26 60 Z\" fill=\"#2A1F14\"/><path d=\"M39 64 Q47 56 55 64 M65 64 Q73 56 81 64\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M36 67 q-6 10 0 15 q6 -5 0 -15 z M84 67 q-6 10 0 15 q6 -5 0 -15 z\" fill=\"#4DA3FF\"/><path d=\"M44 78 H76 Q74 98 60 98 Q46 98 44 78 Z\" fill=\"#5A1E14\"/><rect x=\"46\" y=\"78\" width=\"28\" height=\"6\" fill=\"#FFFAF1\"/>"}, {"id": "nawao", "label": "Na Wa O", "alt": "Na Wa O: hand on head in disbelief", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#CDE6F2\"/><circle cx=\"60\" cy=\"66\" r=\"34\" fill=\"#6B3E1C\"/><path d=\"M40 64 L56 64 M64 64 L80 64\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><path d=\"M40 70 Q48 74 56 70 M64 70 Q72 74 80 70\" stroke=\"#2A1F14\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M47 88 q6 -5 13 0 q6 5 13 0\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><ellipse cx=\"54\" cy=\"42\" rx=\"22\" ry=\"11\" fill=\"#6B3E1C\" stroke=\"#4A2A12\" stroke-width=\"2.5\"/><path d=\"M38 38 L34 30 M46 34 L44 25 M55 32 L55 23 M64 34 L67 25\" stroke=\"#6B3E1C\" stroke-width=\"7\" stroke-linecap=\"round\"/><path d=\"M76 46 Q94 52 98 70\" stroke=\"#6B3E1C\" stroke-width=\"10\" fill=\"none\" stroke-linecap=\"round\"/>"}, {"id": "wahala", "label": "Wahala", "alt": "Wahala: arms folded, not impressed", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F4D6B8\"/><circle cx=\"60\" cy=\"62\" r=\"32\" fill=\"#C68642\"/><path d=\"M26 50 Q28 18 62 18 Q98 18 96 48 Q84 34 60 34 Q38 34 26 50 Z\" fill=\"#E0457B\"/><path d=\"M60 18 Q82 4 96 24 Q84 22 74 28 Z\" fill=\"#B8325F\"/><path d=\"M40 50 L55 56 M80 50 L65 56\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><circle cx=\"48\" cy=\"62\" r=\"3.6\" fill=\"#2A1F14\"/><circle cx=\"72\" cy=\"62\" r=\"3.6\" fill=\"#2A1F14\"/><path d=\"M49 82 Q60 74 71 82\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"18\" y=\"92\" width=\"62\" height=\"16\" rx=\"8\" fill=\"#B44A12\"/><rect x=\"40\" y=\"98\" width=\"62\" height=\"16\" rx=\"8\" fill=\"#D9621E\"/>"}, {"id": "bigboss", "label": "Big Boss", "alt": "Big Boss: fedora, fur collar and gold chain", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#EADCC4\"/><circle cx=\"60\" cy=\"64\" r=\"32\" fill=\"#8D5524\"/><rect x=\"30\" y=\"34\" width=\"60\" height=\"8\" rx=\"4\" fill=\"#2A1F14\"/><path d=\"M40 36 Q42 12 60 12 Q78 12 80 36 Z\" fill=\"#2A1F14\"/><rect x=\"40\" y=\"28\" width=\"40\" height=\"5\" fill=\"#B44A12\"/><path d=\"M40 60 L56 60 M64 60 L80 60\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><circle cx=\"50\" cy=\"63\" r=\"3.2\" fill=\"#2A1F14\"/><circle cx=\"72\" cy=\"63\" r=\"3.2\" fill=\"#2A1F14\"/><path d=\"M50 80 Q62 86 72 76\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><g fill=\"#FFF8EE\" stroke=\"#D9C6A5\" stroke-width=\"1.5\"><circle cx=\"24\" cy=\"104\" r=\"12\"/><circle cx=\"42\" cy=\"108\" r=\"12\"/><circle cx=\"60\" cy=\"110\" r=\"12\"/><circle cx=\"78\" cy=\"108\" r=\"12\"/><circle cx=\"96\" cy=\"104\" r=\"12\"/></g><path d=\"M42 92 Q60 108 78 92\" stroke=\"#F5B100\" stroke-width=\"4.5\" fill=\"none\" stroke-linecap=\"round\"/><circle cx=\"60\" cy=\"101\" r=\"5\" fill=\"#F5B100\"/>"}, {"id": "softlife", "label": "Soft Life", "alt": "Soft Life: relaxing with a coconut drink", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#CFE3D2\"/><path d=\"M24 70 Q20 30 60 28 Q100 30 96 70 Q96 94 86 100 L34 100 Q24 94 24 70 Z\" fill=\"#2A1F14\"/><circle cx=\"60\" cy=\"64\" r=\"31\" fill=\"#E0AC69\"/><path d=\"M32 54 Q40 36 60 36 Q80 36 88 54 Q74 44 60 44 Q46 44 32 54 Z\" fill=\"#2A1F14\"/><circle cx=\"86\" cy=\"42\" r=\"5\" fill=\"#E0457B\"/><circle cx=\"93\" cy=\"46\" r=\"5\" fill=\"#E0457B\"/><circle cx=\"88\" cy=\"50\" r=\"5\" fill=\"#E0457B\"/><circle cx=\"81\" cy=\"48\" r=\"5\" fill=\"#E0457B\"/><circle cx=\"87\" cy=\"46\" r=\"3\" fill=\"#F5B100\"/><path d=\"M42 62 Q48 68 54 62 M66 62 Q72 68 78 62\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M50 78 Q60 86 70 78\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><circle cx=\"93\" cy=\"96\" r=\"14\" fill=\"#8A5A2B\"/><ellipse cx=\"93\" cy=\"85\" rx=\"10\" ry=\"4\" fill=\"#FFFAF1\"/><path d=\"M95 85 L102 68\" stroke=\"#D93A31\" stroke-width=\"3\" stroke-linecap=\"round\"/><path d=\"M84 76 L100 70 L90 64 Z\" fill=\"#F5B100\"/>"}, {"id": "omo", "label": "Omo!", "alt": "Omo: hands on cheeks, amazed", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F9E1A1\"/><circle cx=\"60\" cy=\"64\" r=\"32\" fill=\"#6B3E1C\"/><path d=\"M30 56 Q32 30 60 30 Q88 30 90 56 Q80 42 60 42 Q40 42 30 56 Z\" fill=\"#2A1F14\"/><circle cx=\"48\" cy=\"62\" r=\"8\" fill=\"#FFFAF1\"/><circle cx=\"72\" cy=\"62\" r=\"8\" fill=\"#FFFAF1\"/><circle cx=\"48\" cy=\"62\" r=\"3.4\" fill=\"#2A1F14\"/><circle cx=\"72\" cy=\"62\" r=\"3.4\" fill=\"#2A1F14\"/><path d=\"M40 48 Q48 44 55 48 M65 48 Q72 44 80 48\" stroke=\"#2A1F14\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/><ellipse cx=\"60\" cy=\"84\" rx=\"5\" ry=\"6.5\" fill=\"#5A1E14\"/><ellipse cx=\"30\" cy=\"80\" rx=\"10\" ry=\"16\" fill=\"#6B3E1C\" stroke=\"#4A2A12\" stroke-width=\"2.5\"/><ellipse cx=\"90\" cy=\"80\" rx=\"10\" ry=\"16\" fill=\"#6B3E1C\" stroke=\"#4A2A12\" stroke-width=\"2.5\"/>"}, {"id": "dontknowher", "label": "I Don’t Know Her", "alt": "I Don't Know Her: eyes closed, chin up, palm raised", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#F7C6CF\"/><g transform=\"rotate(-12 60 64)\"><path d=\"M24 76 Q20 30 60 30 Q100 30 96 76 L84 76 Q84 46 60 46 Q36 46 36 76 Z\" fill=\"#2A1F14\"/><circle cx=\"60\" cy=\"64\" r=\"30\" fill=\"#C68642\"/><path d=\"M32 58 Q34 36 60 36 Q86 36 88 58 Q76 46 60 46 Q44 46 32 58 Z\" fill=\"#2A1F14\"/><path d=\"M42 64 Q48 60 54 64 M66 64 Q72 60 78 64\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M42 64 L39 60 M78 64 L81 60\" stroke=\"#2A1F14\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><path d=\"M52 82 L68 81\" stroke=\"#2A1F14\" stroke-width=\"3.5\" stroke-linecap=\"round\"/></g><ellipse cx=\"98\" cy=\"84\" rx=\"11\" ry=\"14\" fill=\"#C68642\" stroke=\"#8A5A2B\" stroke-width=\"2.5\"/><path d=\"M92 72 V62 M98 70 V58 M104 72 V62\" stroke=\"#C68642\" stroke-width=\"6\" stroke-linecap=\"round\"/>"}, {"id": "maincharacter", "label": "Main Character", "alt": "Main Character: big hair, a wink and sparkles", "svg": "<circle cx=\"60\" cy=\"60\" r=\"58\" fill=\"#D7D8F5\"/><circle cx=\"60\" cy=\"56\" r=\"40\" fill=\"#2A1F14\"/><circle cx=\"60\" cy=\"68\" r=\"30\" fill=\"#8D5524\"/><path d=\"M42 64 Q48 60 54 64\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><circle cx=\"72\" cy=\"63\" r=\"3.6\" fill=\"#2A1F14\"/><circle cx=\"44\" cy=\"76\" r=\"4\" fill=\"#E0457B\" opacity=\"0.6\"/><circle cx=\"78\" cy=\"76\" r=\"4\" fill=\"#E0457B\" opacity=\"0.6\"/><path d=\"M48 80 Q60 92 72 80\" stroke=\"#2A1F14\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M16 16 L19 24 L27 27 L19 30 L16 38 L13 30 L5 27 L13 24 Z\" fill=\"#F5B100\"/><path d=\"M102 12 L104 18 L110 20 L104 22 L102 28 L100 22 L94 20 L100 18 Z\" fill=\"#F5B100\"/><path d=\"M104 92 L107 100 L115 103 L107 106 L104 114 L101 106 L93 103 L101 100 Z\" fill=\"#F5B100\"/>"}];
+const MOOD_BY_ID = Object.fromEntries(MOODS.map(m => [m.id, m]));
+const AVATARS = MOODS.map(m => m.id);
+/* Draws an avatar. Older games stored an emoji; those still show as the emoji. */
+function avatarSVG(id, cls){
+  const m = MOOD_BY_ID[id];
+  if (!m) return `<span class="${cls || "face"} emo" aria-hidden="true">${esc(id || "🙂")}</span>`;
+  return `<svg class="${cls || "face"}" viewBox="0 0 120 120" role="img" aria-label="${esc(m.label)}">${m.svg}</svg>`;
+}
 const CHIP = [["#FF4757","#fff"],["#1E90FF","#fff"],["#FFB302","#2A1D00"],["#2ED573","#052B14"],["#A55EEA","#fff"],["#FF6B9D","#2B0014"],["#FF9F43","#2A1400"],["#18DCFF","#00262E"]];
 
 /* ─── helpers ─── */
@@ -601,8 +636,12 @@ let revealing = -1;
 let lastView = "";
 let myResults = store.get("oya.results", {}); // per game: { [q_index]: {correct, points, streak} }
 let pendingChoice = null;
-let myAvatar = store.get("oya.avatar", null) || AVATARS[Math.floor(Math.random()*AVATARS.length)];
-const face = p => `<span class="face" aria-hidden="true">${esc(p.avatar || "🙂")}</span>`;
+let myAvatar = store.get("oya.avatar", null);
+if (!MOOD_BY_ID[myAvatar]) myAvatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
+const face = p => avatarSVG(p.avatar, "face");
+const CROWN_SVG = `<svg class="crown" viewBox="0 0 64 44" aria-hidden="true"><path d="M4 40 L8 10 L22 24 L32 4 L42 24 L56 10 L60 40 Z" fill="#F5B100" stroke="#8A5A00" stroke-width="3" stroke-linejoin="round"/><circle cx="32" cy="30" r="5" fill="#D93A31"/><circle cx="16" cy="32" r="3.5" fill="#2F62D9"/><circle cx="48" cy="32" r="3.5" fill="#178A4C"/></svg>`;
+const gloveSVG = side => `<svg class="glove ${side}" viewBox="0 0 60 48" aria-hidden="true"><rect x="2" y="16" width="16" height="18" rx="4" fill="#FFFAF1" stroke="#2A1F14" stroke-width="3"/><path d="M16 10 Q16 4 26 4 L44 4 Q58 4 58 22 Q58 42 42 44 L24 44 Q16 44 16 36 Z" fill="#D93A31" stroke="#2A1F14" stroke-width="3" stroke-linejoin="round"/><path d="M24 14 Q34 10 44 14" stroke="#FFFAF1" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/></svg>`;
+const dancer = (p, n) => `<div class="dancer">${n === 1 ? CROWN_SVG : ""}${n === 1 ? gloveSVG("l") : ""}${face(p)}${n === 1 ? gloveSVG("r") : ""}</div>`;
 
 function watch(id){
   if (sub) sub.stop();
@@ -732,14 +771,14 @@ function renderLanding(app){
       <h1 class="logo">${logo()}</h1>
       <p>A quiz game for the whole room. The big screen asks, everyone answers on their phone, and the quickest right answers win.</p>
     </section>
-    ${LIVE ? "" : `<div class="banner">Preview mode: host a game to try it with bot players. Add your Supabase details in <b>CONFIG</b> so friends can join from their phones.</div>`}
+    ${LIVE ? "" : `<div class="banner" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><span>Preview mode: host a game to try it with bot players. Add your Supabase details in <b>CONFIG</b> so friends can join from their phones.</span><button class="btn" data-act="demoPodium" style="background:var(--night);color:var(--text);box-shadow:none;padding:8px 14px">See the podium dance</button></div>`}
     <div class="choose">
       <form class="panel" id="joinForm">
         <h2>Join a game</h2>
         <div class="field"><label for="codeIn">Game PIN</label><input class="code" id="codeIn" inputmode="numeric" maxlength="6" placeholder="000000" value="${esc(code)}" autocomplete="off"></div>
         <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="24" placeholder="What should we call you?" value="${esc(store.get("oya.name",""))}" autocomplete="given-name"></div>
-        <div class="field"><label id="avLbl">Pick your avatar</label>
-          <div class="avatars" role="group" aria-labelledby="avLbl">${AVATARS.map(a => `<button type="button" class="av" data-av="${a}" aria-pressed="${a===myAvatar}" aria-label="Avatar ${a}">${a}</button>`).join("")}</div></div>
+        <div class="field"><label id="avLbl" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">Pick your mood <span class="avname" id="avName">${esc((MOOD_BY_ID[myAvatar] || MOODS[0]).label)}</span></label>
+          <div class="avatars" role="group" aria-labelledby="avLbl">${MOODS.map(m => `<button type="button" class="av" data-av="${m.id}" aria-pressed="${m.id===myAvatar}" aria-label="${esc(m.label)}" title="${esc(m.label)}">${avatarSVG(m.id, "")}</button>`).join("")}</div></div>
         <p class="err" id="joinErr"></p>
         <button class="btn go big" id="joinBtn" type="submit">Let's go</button>
       </form>
@@ -864,7 +903,7 @@ function renderHost(app){
             <div><div class="count">${S.players.length}</div><div class="muted" style="font-weight:800">${S.players.length===1?"player":"players"} in</div></div>
             <button class="btn go big" data-act="start" ${S.players.length ? "" : "disabled"}>Oya nau!</button>
           </div>
-          <div class="players">${S.players.length ? S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)}"><span class="pa">${esc(p.avatar || "🙂")}</span>${esc(p.name)}</span>`).join("") : `<p class="muted" style="margin:0">Waiting for players…</p>`}</div>
+          <div class="players">${S.players.length ? S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)}">${avatarSVG(p.avatar, "chipface")}${esc(p.name)}</span>`).join("") : `<p class="muted" style="margin:0">Waiting for players…</p>`}</div>
           <p class="muted" style="margin:0">${total} questions · ${g.q_seconds}s each</p>
         </div>
       </div>`;
@@ -929,7 +968,7 @@ function renderHost(app){
   if (g.status === "finished"){
     const r = ranked();
     const [p1, p2, p3] = r;
-    const step = (p, cls, n) => p ? `<div class="step ${cls}">${face(p)}<span class="who">${esc(p.name)}</span><span class="pts">${p.score.toLocaleString()} pts</span><div class="blk">${n}</div></div>` : `<div class="step ${cls}"></div>`;
+    const step = (p, cls, n) => p ? `<div class="step ${cls}">${dancer(p, n)}<span class="who">${esc(p.name)}</span><span class="pts">${p.score.toLocaleString()} pts</span><div class="blk">${n}</div></div>` : `<div class="step ${cls}"></div>`;
     app.innerHTML = `
       <div class="lb">
         <h2>${p1 ? esc(p1.name) + " wins!" : "Game over"}</h2>
@@ -962,10 +1001,10 @@ function renderPlayer(app){
 
   if (g.status === "lobby"){
     setView("");
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig wait"><div class="bigface">${esc(me.avatar || "🙂")}</div><h2>You're in!</h2>
+    app.innerHTML = `<div class="phone">${bar}<div class="pbig wait">${avatarSVG(me.avatar, "bigface")}<h2>You're in!</h2>
       <p>${R ? "The game starts on your phone when the host is ready." : "Look for your name on the big screen."}</p><div class="spinner"></div>
       <p class="muted">Game ${esc(g.code)} · ${S.players.length} ${S.players.length===1?"player":"players"}${R ? " · Remote" : ""}</p>
-      ${R ? `<div class="players" style="justify-content:center">${S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)};font-size:15px"><span class="pa">${esc(p.avatar || "🙂")}</span>${esc(p.name)}</span>`).join("")}</div>` : ""}
+      ${R ? `<div class="players" style="justify-content:center">${S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)};font-size:15px">${avatarSVG(p.avatar, "chipface")}${esc(p.name)}</span>`).join("")}</div>` : ""}
     </div></div>`; return;
   }
   if (g.status === "question"){
@@ -1015,7 +1054,7 @@ function renderPlayer(app){
   }
   if (g.status === "finished"){
     const msg = rankIdx === 1 ? "Champion!" : rankIdx <= 3 ? "On the podium!" : "Good game!";
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig ${rankIdx <= 3 ? "ok" : "wait"}" style="min-height:0"><h2>${msg}</h2><div class="pts">${ordinal(rankIdx)}</div><p>${me.score.toLocaleString()} points</p></div>
+    app.innerHTML = `<div class="phone">${bar}<div class="pbig ${rankIdx <= 3 ? "ok" : "wait"}" style="min-height:0">${rankIdx <= 3 ? `<div class="p${rankIdx}">${dancer(me, rankIdx).replace('class="face"', 'class="face" style="width:120px;height:120px"')}</div>` : ""}<h2>${msg}</h2><div class="pts">${ordinal(rankIdx)}</div><p>${me.score.toLocaleString()} points</p></div>
       ${R ? `<h3 class="logo" style="font-size:26px;text-align:center">Final standings</h3>${board(10)}` : ""}
       <button class="btn go" data-act="leave" style="align-self:center">Done</button></div>`;
     if (app.dataset.burst !== "final"){ app.dataset.burst = "final"; if (rankIdx <= 3){ burst(); if (R) fanfare(); } }
@@ -1045,7 +1084,7 @@ document.addEventListener("click", e => {
   if (b.dataset.cat){ setup.cats.has(b.dataset.cat) ? setup.cats.delete(b.dataset.cat) : setup.cats.add(b.dataset.cat); render(); return; }
   if (b.dataset.count){ setup.count = +b.dataset.count; render(); return; }
   if (b.dataset.secs){ setup.secs = +b.dataset.secs; render(); return; }
-  if (b.dataset.av){ myAvatar = b.dataset.av; store.set("oya.avatar", myAvatar); document.querySelectorAll(".av").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.av === myAvatar))); return; }
+  if (b.dataset.av){ myAvatar = b.dataset.av; store.set("oya.avatar", myAvatar); document.querySelectorAll(".av").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.av === myAvatar))); const n = $("avName"); if (n && MOOD_BY_ID[myAvatar]) n.textContent = MOOD_BY_ID[myAvatar].label; return; }
   if (b.dataset.choice !== undefined){ answer(+b.dataset.choice); return; }
   if (b.id === "toSetup"){ role = "setup"; render(); return; }
   if (b.id === "createBtn"){ createGame(); return; }
@@ -1053,6 +1092,15 @@ document.addEventListener("click", e => {
   const g = S && S.game;
   switch (b.dataset.act){
     case "home": role = null; render(); break;
+    case "demoPodium": {
+      if (LIVE) break;
+      const ppl = [["Tobi","bigboss",9420],["Kemi","sideeye",8870],["Ada","maincharacter",8310],["Sam","unbothered",6200],["Jo","cryinglaugh",5100]]
+        .map(([name, avatar, score], i) => ({ id:"d"+i, name, avatar, score, streak:0, last_points:0 }));
+      hostSess = { gameId:"demo-podium", token:"x", code:"000000" };
+      role = "host"; lastView = ""; delete $("app").dataset.celebrated;
+      S = { game:{ id:"demo-podium-"+Date.now(), code:"000000", status:"finished", q_index:14, q_seconds:20, questions:[], remote:false }, players:ppl, answers:[] };
+      render(); break;
+    }
     case "showCode": gen.showCode = true; render(); setTimeout(() => $("genCode") && $("genCode").focus(), 0); break;
     case "saveCode": { const v = ($("genCode").value || "").trim(); if (!v) break; gen.code = v; gen.showCode = false; gen.err = ""; store.set("oya.hostcode", v); render(); toast("Host code saved on this device."); break; }
     case "clearCode": gen.code = ""; store.set("oya.hostcode", ""); render(); break;
