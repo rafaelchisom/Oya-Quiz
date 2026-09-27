@@ -137,6 +137,31 @@ input{font:inherit}
 .dots::after{content:"";animation:dots 1.2s steps(4) infinite}
 @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 
+.mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.mode{grid-template-columns:minmax(0,1fr)}}
+.mode button{border:3px solid var(--line);background:var(--night);border-radius:18px;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.mode button b{font-family:var(--display);font-weight:400;font-size:22px}
+.mode button span{color:var(--muted);font-size:14px;font-weight:700}
+.mode button[aria-pressed="true"]{border-color:var(--sun);background:var(--night-3)}
+.remote-tag{background:var(--b);color:#fff}
+.confirmbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--night-3);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-weight:800}
+.confirmbar .btn{padding:8px 14px;font-size:14px}
+.leave{border:0;background:transparent;color:var(--muted);font-weight:800;font-size:14px;padding:4px 6px;text-decoration:underline}
+.copyrow{display:flex;gap:8px;align-items:stretch}
+.copyrow .url{flex:1;min-width:0}
+.rmedia .flag{max-height:130px}
+.rmedia .emoji{font-size:64px}
+.pcount{text-align:center;font-weight:800;color:var(--muted);margin:0}
+.pbig .ansline{font-size:17px;font-weight:800;background:rgba(0,0,0,.18);border-radius:12px;padding:8px 12px}
+.minibars{display:flex;flex-direction:column;gap:6px;width:100%;max-width:360px}
+.minibar{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;gap:8px;align-items:center;font-weight:900;font-size:14px}
+.minibar .tr{height:14px;border-radius:99px;background:rgba(0,0,0,.2);overflow:hidden}
+.minibar .tr i{display:block;height:100%;border-radius:99px}
+.plist{display:flex;flex-direction:column;gap:6px;width:100%}
+.plist .lrow{font-size:17px;padding:8px 12px;grid-template-columns:34px minmax(0,1fr) auto}
+.plist .lrow .rk{font-size:22px}
+.plist .lrow.me{outline:3px solid var(--sun)}
+
 /* Question (host) */
 .qwrap{display:flex;flex-direction:column;gap:18px;flex:1}
 .qhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
@@ -431,7 +456,7 @@ function liveApi(){
   const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data || {}; };
   async function load(id){
     const [g, p, a] = await Promise.all([
-      sb.from("quiz_games").select("id,code,status,q_index,q_started_at,q_seconds,questions").eq("id", id).single(),
+      sb.from("quiz_games").select("id,code,status,q_index,q_started_at,q_seconds,questions,remote").eq("id", id).single(),
       sb.from("quiz_players").select("id,name,avatar,score,streak,last_points,joined_at").eq("game_id", id).order("joined_at"),
       sb.from("quiz_answers").select("player_id,q_index,choice,correct,points").eq("game_id", id)
     ]);
@@ -439,7 +464,8 @@ function liveApi(){
     return { game: g.data, players: p.data || [], answers: a.data || [] };
   }
   return {
-    createGame: (qs, secs, token) => rpc("quiz_create_game", { p_questions: qs, p_seconds: secs, p_token: token }),
+    createGame: (qs, secs, token, remote) => rpc("quiz_create_game", { p_questions: qs, p_seconds: secs, p_token: token, p_remote: !!remote }),
+    leave: (pid, token) => rpc("quiz_leave", { p_player: pid, p_token: token }),
     join: (code, name, token, avatar) => rpc("quiz_join", { p_code: code, p_name: name, p_token: token, p_avatar: avatar }),
     hostSet: (id, token, status, idx) => rpc("quiz_host_set", { p_game: id, p_token: token, p_status: status, p_index: idx }),
     answer: (pid, token, idx, choice) => rpc("quiz_answer", { p_player: pid, p_token: token, p_q_index: idx, p_choice: choice }),
@@ -485,13 +511,14 @@ function demoApi(){
     emit(id); return { status:"ok", correct:ok, points:pts, streak };
   }
   return {
-    async createGame(qs, secs){
+    async createGame(qs, secs, token, remote){
       const id = "demo-" + Date.now(), code = String(100000 + Math.floor(Math.random()*900000));
-      games[id] = { game:{ id, code, status:"lobby", q_index:-1, q_started_at:null, q_seconds:secs, questions:qs }, players:[], answers:[] };
+      games[id] = { game:{ id, code, status:"lobby", q_index:-1, q_started_at:null, q_seconds:secs, questions:qs, remote:!!remote }, players:[], answers:[] };
       BOTS.forEach((n,i) => setTimeout(() => { if (games[id].game.status !== "lobby") return; games[id].players.push({ id:"bot"+i, name:n, avatar:AVATARS[(i*5+3)%AVATARS.length], score:0, streak:0, last_points:0 }); emit(id); }, 700 + i*650));
       return { status:"ok", id, code };
     },
     async join(){ return { status:"demo" }; },
+    async leave(){ return { status:"ok" }; },
     async generate(){ return { error:"demo" }; },
     async hostSet(id, token, status, idx){
       const st = games[id], g = st.game;
@@ -530,7 +557,8 @@ let S = null;                         // { game, players, answers }
 let sub = null;
 let hostSess = store.get("oya.host", null);      // { gameId, token, code }
 let playerSess = store.get("oya.player", null);  // { gameId, playerId, token, name, code }
-const setup = { cats: new Set(CATS.map(c => c.id).concat(customCats.map(c => c.id))), count: 15, secs: 20 };
+let confirm = null;   // "leave" | "end" while an inline confirm is showing
+const setup = { remote: store.get("oya.remote", false), cats: new Set(CATS.map(c => c.id).concat(customCats.map(c => c.id))), count: 15, secs: 20 };
 const gen = { topic:"", count:10, diff:"medium", busy:false, err:"", review:null, code: store.get("oya.hostcode","") };
 const IDEAS = ["Premier League 2000s","Nollywood classics","Big Brother Naija","90s cartoons","Marvel movies","Nigerian slang","Beyoncé","Harry Potter","Anime","UK rap"];
 
@@ -604,7 +632,7 @@ async function createGame(){
   const token = uuid();
   $("createBtn").disabled = true;
   try{
-    const r = await api.createGame(picked, setup.secs, token);
+    const r = await api.createGame(picked, setup.secs, token, setup.remote);
     if (r.status !== "ok") throw new Error(r.status);
     hostSess = { gameId: r.id, token, code: r.code };
     if (LIVE) store.set("oya.host", hostSess);
@@ -652,6 +680,13 @@ async function joinGame(code, name){
     store.set("oya.player", playerSess);
     role = "player"; watch(r.game_id);
   }catch(e){ err.textContent = "Couldn't connect. Check your signal and try again."; $("joinBtn").disabled = false; }
+}
+async function leaveGame(){
+  const sess = playerSess;
+  stopWatch(); store.set("oya.player", null); playerSess = null; role = null; lastView = ""; confirm = null;
+  history.replaceState(null, "", location.pathname);
+  render(); toast("You left the game.");
+  try{ if (sess) await api.leave(sess.playerId, sess.token); }catch(e){}
 }
 async function answer(choice){
   const g = S.game;
@@ -732,6 +767,12 @@ function renderSetup(app){
             <span class="ct">${n} questions</span>
           </button>`; }).join("")}
       </div>
+      <div class="field"><label>Where is everyone?</label>
+        <div class="mode">
+          <button type="button" data-remote="0" aria-pressed="${!setup.remote}"><b>Same room</b><span>Questions on one big screen, phones are the buzzers.</span></button>
+          <button type="button" data-remote="1" aria-pressed="${setup.remote}"><b>Remote</b><span>Everyone sees the questions, results and leaderboard on their own phone.</span></button>
+        </div>
+      </div>
       <section class="ai" aria-labelledby="aiH">
         <div><h3 id="aiH">Make a category with AI</h3><p class="muted" style="margin:4px 0 0">Type any topic and get a fresh round of questions. Check them before you play; AI can get facts wrong.</p></div>
         <div class="grid">
@@ -776,11 +817,17 @@ function media(q){
 }
 function ranked(){ return [...S.players].sort((a,b) => b.score - a.score || a.name.localeCompare(b.name)); }
 
+function endBar(){
+  return confirm === "end"
+    ? `<div class="confirmbar"><span>End the game now and show the results?</span><button class="btn go" data-act="endNow">End game</button><button class="btn ghost" data-act="noConfirm">Keep playing</button></div>`
+    : "";
+}
+const endBtn = () => `<button class="btn ghost" data-act="askEnd">End game</button>`;
 function renderHost(app){
   const g = S.game, total = g.questions.length;
   const q = g.q_index >= 0 ? g.questions[g.q_index] : null;
   const cat = q ? catOf(q.c) : null;
-  const view = `${g.status}|${g.q_index}`;
+  const view = `${g.status}|${g.q_index}|${confirm || ""}`;
   const firstPaint = view !== lastView; lastView = view;
 
   if (g.status === "lobby"){
@@ -789,10 +836,12 @@ function renderHost(app){
       <div class="topbar"><h1 class="logo">${logo()}</h1><button class="btn ghost" data-act="endHost">Cancel game</button></div>
       <div class="lobby">
         <div class="panel join-card">
-          <div class="how">Join on your phone with Game PIN</div>
+          ${g.remote ? `<span class="pill remote-tag" style="width:max-content">Remote game</span>` : ""}
+          <div class="how">${g.remote ? "Send everyone the link, or share the Game PIN" : "Join on your phone with Game PIN"}</div>
           <div class="bigcode">${g.code.slice(0,3)} ${g.code.slice(3)}</div>
           <div class="qr" id="qr" ${LIVE ? "" : "hidden"}></div>
-          <div class="url" ${LIVE ? "" : "hidden"}>${esc(url)}</div>
+          <div class="copyrow" ${LIVE ? "" : "hidden"}><div class="url">${esc(url)}</div><button class="btn" data-copy="${esc(url)}">Copy link</button></div>
+          ${g.remote ? `<p class="muted" style="margin:0">Everyone plays on their own phone. Want to play too? Open the link on your phone and join.</p>` : ""}
           ${LIVE ? "" : `<p class="muted" style="margin:0">Preview mode: bot players are joining so you can try the game.</p>`}
         </div>
         <div class="panel" style="display:flex;flex-direction:column;gap:16px">
@@ -816,8 +865,9 @@ function renderHost(app){
         <div class="qhead">
           <span class="pill">Question ${g.q_index+1} of ${total}</span>
           <span class="pill cat" style="--catc:${cat.c};--catfg:${cat.fg}">${esc(cat.name)}</span>
-          <button class="btn ghost" data-act="skip">Skip timer</button>
-        </div>
+          ${g.remote ? `<span class="pill remote-tag">Remote</span>` : ""}
+          <span style="display:flex;gap:8px"><button class="btn ghost" data-act="skip">Skip timer</button>${endBtn()}</span>
+        </div>${endBar()}
         <div class="qstage">
           <div class="ring"><svg viewBox="0 0 120 120"><circle class="tr" cx="60" cy="60" r="50" fill="none" stroke-width="12"/><circle class="pr" cx="60" cy="60" r="50" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="0"/></svg><div class="num">${g.q_seconds}</div></div>
           <div style="display:flex;flex-direction:column;gap:14px;min-width:0">${media(q)}<h2 class="qtext">${esc(q.q)}</h2></div>
@@ -839,7 +889,8 @@ function renderHost(app){
           <span class="pill">Question ${g.q_index+1} of ${total}</span>
           <span class="pill cat" style="--catc:${cat.c};--catfg:${cat.fg}">${esc(cat.name)}</span>
           <span class="pill">${right} of ${S.players.length} got it</span>
-        </div>
+          ${endBtn()}
+        </div>${endBar()}
         <div style="display:flex;flex-direction:column;gap:14px">${media(q)}<h2 class="qtext">${esc(q.q)}</h2></div>
         ${answerTiles(q, "reveal", counts)}
         <div class="actions"><button class="btn go big" data-act="${last ? "finish" : "board"}">${last ? "Final results" : "Leaderboard"}</button></div>
@@ -854,7 +905,8 @@ function renderHost(app){
         <h2>Leaderboard</h2>
         <p class="muted" style="text-align:center;margin:0 0 6px">After question ${g.q_index+1} of ${total}</p>
         ${top.map((p,i) => `<div class="lrow"><span class="rk">${i+1}</span><span class="nm">${face(p)} ${esc(p.name)}${p.streak >= 2 ? ` <span class="streak">${p.streak} in a row</span>` : ""}</span><span class="plus ${p.last_points ? "" : "zero"}">+${p.last_points}</span><span class="sc">${p.score.toLocaleString()}</span></div>`).join("")}
-        <div class="actions" style="margin-top:8px"><button class="btn go big" data-act="next">Next question</button></div>
+        ${endBar()}
+        <div class="actions" style="margin-top:8px">${endBtn()}<button class="btn go big" data-act="next">Next question</button></div>
       </div>`;
     return;
   }
@@ -870,57 +922,88 @@ function renderHost(app){
         ${r.slice(3, 10).map((p,i) => `<div class="lrow"><span class="rk">${i+4}</span><span class="nm">${face(p)} ${esc(p.name)}</span><span></span><span class="sc">${p.score.toLocaleString()}</span></div>`).join("")}
         <div class="actions" style="margin-top:8px;justify-content:center"><button class="btn go big" data-act="again">Play again</button></div>
       </div>`;
-    if (firstPaint){ setTimeout(burst, 900); setTimeout(burst, 1700); fanfare(); }
+    if (firstPaint && app.dataset.celebrated !== g.id){ app.dataset.celebrated = g.id; setTimeout(burst, 900); setTimeout(burst, 1700); fanfare(); }
   }
 }
 
 function renderPlayer(app){
   const g = S.game, me = S.players.find(p => p.id === playerSess.playerId);
-  if (!me){ app.innerHTML = `<div class="phone"><div class="pbig wait"><h2>You've left this game</h2><p>Ask the host for the PIN to join again.</p><button class="btn go" data-act="leave">Back</button></div></div>`; return; }
+  if (!me){ app.innerHTML = `<div class="phone"><div class="pbig wait"><h2>You're not in this game</h2><p>You may have left, or the host started a new one. Ask for the PIN to join again.</p><button class="btn go" data-act="leave">Back</button></div></div>`; return; }
   const view = `${g.status}|${g.q_index}`;
   if (view !== lastView){ lastView = view; pendingChoice = null; }
-  const rankIdx = ranked().findIndex(p => p.id === me.id) + 1;
-  const bar = `<div class="pbar"><span class="me">${face(me)} ${esc(me.name)}</span><span class="pscore">${me.score.toLocaleString()}</span></div>`;
+  const R = g.remote;
+  const rk = ranked();
+  const rankIdx = rk.findIndex(p => p.id === me.id) + 1;
+  const bar = `<div class="pbar"><span class="me">${face(me)} ${esc(me.name)}</span><span style="display:flex;gap:8px;align-items:center"><span class="pscore">${me.score.toLocaleString()}</span><button class="leave" data-act="askLeave">Leave</button></span></div>
+    ${confirm === "leave" ? `<div class="confirmbar"><span>Leave the game? Your points go with you.</span><button class="btn go" data-act="leaveNow">Leave</button><button class="btn ghost" data-act="noConfirm">Stay</button></div>` : ""}`;
   const q = g.q_index >= 0 ? g.questions[g.q_index] : null;
+  const cat = q ? catOf(q.c) : null;
   const mine = S.answers.find(a => a.player_id === me.id && a.q_index === g.q_index);
   const local = (myResults[g.id] || {})[g.q_index];
+  const answeredN = q ? S.answers.filter(a => a.q_index === g.q_index).length : 0;
+  const head = q ? `<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="pill">Q${g.q_index+1} of ${g.questions.length}</span><span class="pill cat" style="--catc:${cat.c};--catfg:${cat.fg}">${esc(cat.name)}</span></div>` : "";
+  const board = (n) => `<div class="plist">${rk.slice(0, n).map((p,i) => `<div class="lrow ${p.id===me.id?"me":""}"><span class="rk">${i+1}</span><span class="nm">${face(p)} ${esc(p.name)}</span><span class="sc">${p.score.toLocaleString()}</span></div>`).join("")}${rankIdx > n ? `<div class="lrow me"><span class="rk">${rankIdx}</span><span class="nm">${face(me)} ${esc(me.name)}</span><span class="sc">${me.score.toLocaleString()}</span></div>` : ""}</div>`;
+  const setView = v => { app.dataset.view = v; };
 
   if (g.status === "lobby"){
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig wait"><div class="bigface">${esc(me.avatar || "🙂")}</div><h2>You're in!</h2><p>Look for your name on the big screen.</p><div class="spinner"></div><p class="muted">Game ${esc(g.code)} · ${S.players.length} players</p></div></div>`; return;
+    setView("");
+    app.innerHTML = `<div class="phone">${bar}<div class="pbig wait"><div class="bigface">${esc(me.avatar || "🙂")}</div><h2>You're in!</h2>
+      <p>${R ? "The game starts on your phone when the host is ready." : "Look for your name on the big screen."}</p><div class="spinner"></div>
+      <p class="muted">Game ${esc(g.code)} · ${S.players.length} ${S.players.length===1?"player":"players"}${R ? " · Remote" : ""}</p>
+      ${R ? `<div class="players" style="justify-content:center">${S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)};font-size:15px"><span class="pa">${esc(p.avatar || "🙂")}</span>${esc(p.name)}</span>`).join("")}</div>` : ""}
+    </div></div>`; return;
   }
   if (g.status === "question"){
     if (mine || pendingChoice !== null){
       const ch = mine ? mine.choice : pendingChoice;
-      app.innerHTML = `<div class="phone">${bar}<div class="pbig" style="background:${ANS[ch].c};color:${ANS[ch].fg}"><h2>Locked in!</h2><p>You picked ${ANS[ch].l}. Fingers crossed…</p><div class="spinner"></div></div></div>`; return;
+      const key = `locked|${view}|${answeredN}|${confirm||""}`;
+      if (app.dataset.view === key) return; setView(key);
+      app.innerHTML = `<div class="phone">${bar}<div class="pbig" style="background:${ANS[ch].c};color:${ANS[ch].fg}"><h2>Locked in!</h2><p>You picked ${ANS[ch].l}${R ? `: ${esc(q.o[ch])}` : ""}. Fingers crossed…</p><div class="spinner"></div>${R ? `<p>${answeredN} of ${S.players.length} answered</p>` : ""}</div></div>`; return;
     }
-    if (document.getElementById("pAns") && app.dataset.view === view) return;
-    app.dataset.view = view;
-    app.innerHTML = `<div class="phone">${bar}
+    const key = `ask|${view}|${confirm||""}`;
+    if (app.dataset.view === key){ const c = document.getElementById("pAnswered"); if (c) c.textContent = `${answeredN} of ${S.players.length} answered`; return; }
+    setView(key);
+    app.innerHTML = `<div class="phone">${bar}${R ? head : ""}
       <div class="ptimer"><i id="pTimer" style="width:100%"></i></div>
-      <p class="pq">${esc(q.q)}</p>
-      ${q.e ? `<div class="emoji" style="font-size:56px">${q.e}</div>` : ""}
+      ${R ? `<div class="rmedia">${media(q)}</div>` : (q.e ? `<div class="emoji" style="font-size:56px">${q.e}</div>` : "")}
+      <p class="pq" ${R ? `style="font-size:22px"` : ""}>${esc(q.q)}</p>
       <div class="pans" id="pAns">${q.o.map((o,i) => `<button class="pbtn" style="--ac:${ANS[i].c};--afg:${ANS[i].fg}" data-choice="${i}"><span class="let">${ANS[i].l}</span>${esc(o)}</button>`).join("")}</div>
+      ${R ? `<p class="pcount" id="pAnswered">${answeredN} of ${S.players.length} answered</p>` : ""}
     </div>`;
     return;
   }
-  app.dataset.view = "";
+  setView("");
   if (g.status === "reveal"){
     const ok = mine ? mine.correct : false, pts = mine ? mine.points : 0;
     const streak = local ? local.streak : me.streak;
     const title = !mine ? "Too slow!" : ok ? "Correct!" : "Not quite";
-    const sub2 = !mine ? "You didn't answer in time." : ok ? (streak >= 2 ? `${streak} in a row!` : "Nice one.") : `It was ${ANS[q.a].l}: ${esc(q.o[q.a])}`;
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig ${ok ? "ok" : "no"}"><h2>${title}</h2><div class="pts">+${pts}</div><p>${sub2}</p><p>You're ${ordinal(rankIdx)}</p></div></div>`;
+    const sub2 = !mine ? "You didn't answer in time." : ok ? (streak >= 2 ? `${streak} in a row!` : "Nice one.") : "";
+    let extra = "";
+    if (R){
+      const counts = [0,0,0,0]; S.answers.filter(a => a.q_index === g.q_index).forEach(a => counts[a.choice]++);
+      const max = Math.max(1, ...counts);
+      extra = `<div class="ansline">✓ ${ANS[q.a].l}: ${esc(q.o[q.a])}</div>
+        <div class="minibars">${counts.map((n,i) => `<div class="minibar"><span>${ANS[i].l}</span><span class="tr"><i style="width:${n/max*100}%;background:${ANS[i].c};${i===q.a?"outline:2px solid #fff":""}"></i></span><span>${n}</span></div>`).join("")}</div>`;
+    } else if (mine && !ok){
+      extra = `<p>It was ${ANS[q.a].l}: ${esc(q.o[q.a])}</p>`;
+    }
+    app.innerHTML = `<div class="phone">${bar}${R ? head : ""}<div class="pbig ${ok ? "ok" : "no"}"><h2>${title}</h2><div class="pts">+${pts}</div>${sub2 ? `<p>${sub2}</p>` : ""}${extra}<p>You're ${ordinal(rankIdx)}</p></div></div>`;
     if (ok && view !== app.dataset.burst){ app.dataset.burst = view; burst(); }
     return;
   }
   if (g.status === "leaderboard"){
-    const ahead = ranked()[rankIdx - 2];
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig wait"><h2>You're ${ordinal(rankIdx)}</h2><p>${ahead ? `${(ahead.score - me.score).toLocaleString()} points behind ${esc(ahead.name)}` : "Top of the board. Stay sharp!"}</p><div class="spinner"></div></div></div>`; return;
+    const ahead = rk[rankIdx - 2];
+    app.innerHTML = `<div class="phone">${bar}
+      <div class="pbig wait" style="min-height:0"><h2>You're ${ordinal(rankIdx)}</h2><p>${ahead ? `${(ahead.score - me.score).toLocaleString()} points behind ${esc(ahead.name)}` : "Top of the board. Stay sharp!"}</p></div>
+      ${R ? board(5) : `<div class="spinner" style="margin:0 auto"></div>`}
+    </div>`; return;
   }
   if (g.status === "finished"){
     const msg = rankIdx === 1 ? "Champion!" : rankIdx <= 3 ? "On the podium!" : "Good game!";
-    app.innerHTML = `<div class="phone">${bar}<div class="pbig ${rankIdx <= 3 ? "ok" : "wait"}"><h2>${msg}</h2><div class="pts">${ordinal(rankIdx)}</div><p>${me.score.toLocaleString()} points</p><button class="btn go" data-act="leave">Done</button></div></div>`;
-    if (rankIdx <= 3 && app.dataset.burst !== "final"){ app.dataset.burst = "final"; burst(); }
+    app.innerHTML = `<div class="phone">${bar}<div class="pbig ${rankIdx <= 3 ? "ok" : "wait"}" style="min-height:0"><h2>${msg}</h2><div class="pts">${ordinal(rankIdx)}</div><p>${me.score.toLocaleString()} points</p></div>
+      ${R ? `<h3 class="logo" style="font-size:26px;text-align:center">Final standings</h3>${board(10)}` : ""}
+      <button class="btn go" data-act="leave" style="align-self:center">Done</button></div>`;
+    if (app.dataset.burst !== "final"){ app.dataset.burst = "final"; if (rankIdx <= 3){ burst(); if (R) fanfare(); } }
   }
 }
 
@@ -935,6 +1018,8 @@ setInterval(() => {
 /* ─── events ─── */
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.remote !== undefined){ setup.remote = b.dataset.remote === "1"; store.set("oya.remote", setup.remote); render(); return; }
+  if (b.dataset.copy){ const t = b.dataset.copy; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Link copied. Paste it in the group chat!"), () => toast("Couldn't copy. Press and hold the link to copy it.")); return; }
   if (b.dataset.idea){ gen.topic = b.dataset.idea; render(); return; }
   if (b.dataset.gcount){ gen.count = +b.dataset.gcount; render(); return; }
   if (b.dataset.gdiff){ gen.diff = b.dataset.gdiff; render(); return; }
@@ -953,6 +1038,11 @@ document.addEventListener("click", e => {
   const g = S && S.game;
   switch (b.dataset.act){
     case "home": role = null; render(); break;
+    case "askLeave": confirm = "leave"; render(); break;
+    case "askEnd": confirm = "end"; render(); break;
+    case "noConfirm": confirm = null; render(); break;
+    case "leaveNow": leaveGame(); break;
+    case "endNow": confirm = null; revealing = g.q_index; hostSet("finished", g.q_index); break;
     case "all": allCats().forEach(c => setup.cats.add(c.id)); render(); break;
     case "none": setup.cats.clear(); render(); break;
     case "start": hostSet("question", 0); break;
@@ -962,7 +1052,7 @@ document.addEventListener("click", e => {
     case "finish": hostSet("finished", g.q_index); break;
     case "endHost": hostSet("finished", g.q_index); stopWatch(); store.set("oya.host", null); hostSess = null; role = "setup"; render(); break;
     case "again": stopWatch(); store.set("oya.host", null); hostSess = null; role = "setup"; lastView = ""; render(); break;
-    case "leave": stopWatch(); store.set("oya.player", null); playerSess = null; role = null; lastView = ""; history.replaceState(null, "", location.pathname); render(); break;
+    case "leave": confirm = null; stopWatch(); store.set("oya.player", null); playerSess = null; role = null; lastView = ""; history.replaceState(null, "", location.pathname); render(); break;
   }
 });
 
