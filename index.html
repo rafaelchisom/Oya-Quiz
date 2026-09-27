@@ -116,6 +116,27 @@ input{font:inherit}
 .bigface{font-size:96px;line-height:1;animation:popin .5s cubic-bezier(.2,1.6,.4,1) both}
 .step .face{font-size:clamp(44px,8vw,68px)}
 
+.ai{display:flex;flex-direction:column;gap:14px;border:2px dashed var(--line);border-radius:20px;padding:18px;background:linear-gradient(135deg,rgba(255,216,77,.08),rgba(165,94,234,.1))}
+.ai h3{font-family:var(--display);font-weight:400;font-size:26px;margin:0}
+.ai .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
+@media (max-width:700px){.ai .grid{grid-template-columns:minmax(0,1fr)}}
+.ai .field input{font-size:17px;padding:12px 14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:2px solid var(--line);background:var(--night);border-radius:999px;padding:6px 12px;font-weight:800;font-size:14px;color:var(--muted)}
+.chips button:hover{color:var(--text);border-color:var(--sun)}
+.review{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto;padding-right:4px}
+.rq{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;background:var(--night);border-radius:14px;padding:10px 12px}
+.rq .qq{font-weight:800}
+.rq .oo{font-size:14px;color:var(--muted)}
+.rq .oo b{color:var(--d)}
+.rq button,.mine button{border:0;background:var(--night-3);border-radius:10px;padding:6px 10px;font-weight:900}
+.mine{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mine .tag{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:4px 6px 4px 12px;font-weight:800;background:var(--catc);color:var(--catfg)}
+.mine .tag button{background:rgba(0,0,0,.2);color:inherit;padding:2px 8px;border-radius:999px}
+.cat-tile .aib{position:absolute;top:12px;right:46px;font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.25);padding:3px 7px;border-radius:999px}
+.dots::after{content:"";animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+
 /* Question (host) */
 .qwrap{display:flex;flex-direction:column;gap:18px;flex:1}
 .qhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
@@ -223,9 +244,13 @@ const CATS = [
   { id:"movies", name:"Movie Buffs",      blurb:"Hollywood to Nollywood",               c:"#A55EEA", fg:"#FFFFFF" },
   { id:"music",  name:"Afrobeats",        blurb:"Who sang it? Who's that?",             c:"#FF6B9D", fg:"#2B0014" },
   { id:"food",   name:"Food & Chop",      blurb:"From suya to sushi",                   c:"#FF9F43", fg:"#2A1400" },
-  { id:"brain",  name:"Brain Teasers",    blurb:"Weird facts, quick thinking",          c:"#18DCFF", fg:"#00262E" }
+  { id:"brain",  name:"Brain Teasers",    blurb:"Weird facts, quick thinking",          c:"#18DCFF", fg:"#00262E" },
+  { id:"ball",   name:"Football Fever",   blurb:"World Cups, legends and big clubs",   c:"#C4E538", fg:"#1D2600" }
 ];
-const catOf = id => CATS.find(c => c.id === id) || CATS[0];
+let customCats = store.get("oya.custom", []);   // AI-made categories: {id,name,c,fg,blurb,questions}
+const allCats = () => CATS.concat(customCats);
+const catOf = id => allCats().find(c => c.id === id) || CATS[0];
+const allQuestions = () => BANK.concat(customCats.flatMap(k => k.questions.map(q => ({...q, c:k.id}))));
 
 const BANK = [
   // Naija Vibes
@@ -346,7 +371,25 @@ const BANK = [
   {c:"brain", q:"Which planet is called the Red Planet?", o:["Venus","Jupiter","Mercury","Mars"], a:3},
   {c:"brain", q:"What does “www” stand for?", o:["World Wide Web","Wide World Web","Web World Wide","World Web Wire"], a:0},
   {c:"brain", q:"How many sides does a hexagon have?", o:["5","6","7","8"], a:1},
-  {c:"brain", q:"Which animal can't jump?", o:["Kangaroo","Goat","Elephant","Frog"], a:2}
+  {c:"brain", q:"Which animal can't jump?", o:["Kangaroo","Goat","Elephant","Frog"], a:2},
+
+  // Football Fever
+  {c:"ball", q:"Which country has won the most men's World Cups?", o:["Germany","Italy","Brazil","Argentina"], a:2},
+  {c:"ball", q:"Who won the 2022 World Cup in Qatar?", o:["Argentina","France","Brazil","Croatia"], a:0},
+  {c:"ball", q:"Which club is nicknamed “The Red Devils”?", o:["Liverpool","Manchester United","Arsenal","AC Milan"], a:1},
+  {c:"ball", q:"Who has won the most Ballon d'Or awards?", o:["Cristiano Ronaldo","Michel Platini","Johan Cruyff","Lionel Messi"], a:3},
+  {c:"ball", q:"Which country hosted the 2010 World Cup?", o:["Brazil","South Africa","Germany","Morocco"], a:1},
+  {c:"ball", q:"Which club has won the most European Cups / Champions Leagues?", o:["AC Milan","Bayern Munich","Real Madrid","Liverpool"], a:2},
+  {c:"ball", q:"Which country won the very first World Cup in 1930?", o:["Uruguay","Brazil","Argentina","Italy"], a:0},
+  {c:"ball", q:"What does VAR stand for?", o:["Video Action Review","Visual Assist Replay","Video Assistant Referee","Verified Area Ruling"], a:2},
+  {c:"ball", q:"How many points does a team get for a league win?", o:["1","2","4","3"], a:3},
+  {c:"ball", q:"Who scored the famous “Hand of God” goal?", o:["Diego Maradona","Pelé","Lionel Messi","Zinedine Zidane"], a:0},
+  {c:"ball", q:"Which club went a whole Premier League season unbeaten in 2003–04?", o:["Chelsea","Arsenal","Manchester United","Liverpool"], a:1},
+  {c:"ball", q:"Which English club is nicknamed “The Toffees”?", o:["Aston Villa","Fulham","Everton","Leeds United"], a:2},
+  {c:"ball", q:"Which country won Euro 2016?", o:["France","Germany","Spain","Portugal"], a:3},
+  {c:"ball", q:"Which player is known as “CR7”?", o:["Cristiano Ronaldo","Ronaldinho","Carlos Roa","Christian Rodríguez"], a:0},
+  {c:"ball", q:"How many players does each team have on the pitch?", o:["9","10","11","12"], a:2},
+  {c:"ball", q:"Which club's home ground is the Camp Nou?", o:["Real Madrid","Barcelona","Atlético Madrid","Sevilla"], a:1}
 ];
 
 const ANS = [
@@ -399,6 +442,15 @@ function liveApi(){
     join: (code, name, token, avatar) => rpc("quiz_join", { p_code: code, p_name: name, p_token: token, p_avatar: avatar }),
     hostSet: (id, token, status, idx) => rpc("quiz_host_set", { p_game: id, p_token: token, p_status: status, p_index: idx }),
     answer: (pid, token, idx, choice) => rpc("quiz_answer", { p_player: pid, p_token: token, p_q_index: idx, p_choice: choice }),
+    async generate(topic, count, difficulty, hostCode){
+      const { data, error } = await sb.functions.invoke("generate-quiz", { body: { topic, count, difficulty }, headers: { "x-host-code": hostCode || "" } });
+      if (error){
+        let code = "server_error";
+        try { const b = await error.context.json(); code = b.error || code; } catch(e){ if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") code = "no_function"; }
+        return { error: code };
+      }
+      return data;
+    },
     load,
     subscribe(id, cb){
       let t = null, dead = false;
@@ -439,6 +491,7 @@ function demoApi(){
       return { status:"ok", id, code };
     },
     async join(){ return { status:"demo" }; },
+    async generate(){ return { error:"demo" }; },
     async hostSet(id, token, status, idx){
       const st = games[id], g = st.game;
       if (status === "question"){
@@ -476,7 +529,35 @@ let S = null;                         // { game, players, answers }
 let sub = null;
 let hostSess = store.get("oya.host", null);      // { gameId, token, code }
 let playerSess = store.get("oya.player", null);  // { gameId, playerId, token, name, code }
-const setup = { cats: new Set(CATS.map(c => c.id)), count: 15, secs: 20 };
+const setup = { cats: new Set(CATS.map(c => c.id).concat(customCats.map(c => c.id))), count: 15, secs: 20 };
+const gen = { topic:"", count:10, diff:"medium", busy:false, err:"", review:null, code: store.get("oya.hostcode","") };
+const IDEAS = ["Premier League 2000s","Nollywood classics","Big Brother Naija","90s cartoons","Marvel movies","Nigerian slang","Beyoncé","Harry Potter","Anime","UK rap"];
+
+async function generateCategory(){
+  const topic = gen.topic.trim();
+  if (topic.length < 2){ gen.err = "Type a topic first, like “Arsenal” or “Nigerian slang”."; render(); return; }
+  gen.busy = true; gen.err = ""; render();
+  try{
+    const r = await api.generate(topic, gen.count, gen.diff, gen.code);
+    const msg = {
+      demo: "AI questions work on your hosted version (with Supabase). This preview can't reach it.",
+      wrong_code: "That host passcode doesn't match. Check QUIZ_HOST_CODE in Supabase.",
+      no_api_key: "The AI key isn't set yet. Add OPENAI_API_KEY in Supabase Edge Function secrets.",
+      no_function: "The generate-quiz function isn't deployed yet. See the setup steps.",
+      bad_topic: "Try a slightly longer topic.",
+      ai_error: "The AI service had a problem. Try again in a moment.",
+      empty: "The AI didn't return usable questions. Try rewording the topic.",
+      server_error: "Something went wrong generating questions. Try again."
+    }[r.error];
+    if (msg){ gen.err = msg; return; }
+    const [c, fg] = CHIP[(customCats.length + 3) % CHIP.length];
+    const cat = { id: "ai" + Date.now().toString(36), name: r.name || topic.slice(0,24), blurb: `AI round: ${topic}`, c, fg, questions: r.questions };
+    customCats.push(cat); store.set("oya.custom", customCats);
+    setup.cats.add(cat.id); gen.review = cat.id; gen.topic = "";
+    toast(`${r.questions.length} questions added. Check them below.`);
+  }catch(e){ gen.err = "Couldn't reach the AI. Check your connection and try again."; }
+  finally{ gen.busy = false; render(); }
+}
 let qClock = { idx: -1, start: 0 };
 let revealing = -1;
 let lastView = "";
@@ -510,7 +591,7 @@ function onState(){
 
 /* ─── HOST ACTIONS ─── */
 async function createGame(){
-  const pool = shuffle(BANK.filter(q => setup.cats.has(q.c)));
+  const pool = shuffle(allQuestions().filter(q => setup.cats.has(q.c)));
   // spread categories evenly instead of letting one dominate
   const byCat = {}; pool.forEach(q => (byCat[q.c] = byCat[q.c] || []).push(q));
   const mixed = []; let added = true;
@@ -633,7 +714,8 @@ function renderLanding(app){
 }
 
 function renderSetup(app){
-  const avail = BANK.filter(q => setup.cats.has(q.c)).length;
+  const avail = allQuestions().filter(q => setup.cats.has(q.c)).length;
+  const rev = customCats.find(c => c.id === gen.review);
   app.innerHTML = `
     <div class="topbar"><h1 class="logo">${logo()}</h1><button class="btn ghost" data-act="home">Back</button></div>
     <div class="panel" style="display:flex;flex-direction:column;gap:18px">
@@ -642,18 +724,35 @@ function renderSetup(app){
         <div style="display:flex;gap:8px"><button class="btn ghost" data-act="all">All</button><button class="btn ghost" data-act="none">None</button></div>
       </div>
       <div class="cats">
-        ${CATS.map(c => { const n = BANK.filter(q => q.c === c.id).length; return `
+        ${allCats().map(c => { const n = c.questions ? c.questions.length : BANK.filter(q => q.c === c.id).length; return `
           <button class="cat-tile" style="--catc:${c.c};--catfg:${c.fg}" data-cat="${c.id}" aria-pressed="${setup.cats.has(c.id)}">
-            <span class="tick">✓</span>
+            <span class="tick">✓</span>${c.questions ? `<span class="aib">AI</span>` : ""}
             <span><span class="nm">${esc(c.name)}</span><br><span class="bl">${esc(c.blurb)}</span></span>
             <span class="ct">${n} questions</span>
           </button>`; }).join("")}
       </div>
+      <section class="ai" aria-labelledby="aiH">
+        <div><h3 id="aiH">Make a category with AI</h3><p class="muted" style="margin:4px 0 0">Type any topic and get a fresh round of questions. Check them before you play; AI can get facts wrong.</p></div>
+        <div class="grid">
+          <div class="field"><label for="genTopic">Topic</label><input id="genTopic" maxlength="80" placeholder="e.g. Arsenal legends, Nollywood, 2000s R&B" value="${esc(gen.topic)}" ${gen.busy ? "disabled" : ""}></div>
+          <div class="field"><label for="genCode">Host passcode</label><input id="genCode" type="password" maxlength="60" placeholder="From Supabase secrets" value="${esc(gen.code)}" autocomplete="off"></div>
+        </div>
+        <div class="chips">${IDEAS.map(t => `<button type="button" data-idea="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+        <div class="opts" style="align-items:center">
+          <div class="seg"><span class="lbl">How many</span><div class="row">${[5,10,15].map(n => `<button data-gcount="${n}" aria-pressed="${gen.count===n}">${n}</button>`).join("")}</div></div>
+          <div class="seg"><span class="lbl">Difficulty</span><div class="row">${["easy","medium","hard"].map(d => `<button data-gdiff="${d}" aria-pressed="${gen.diff===d}">${d[0].toUpperCase()+d.slice(1)}</button>`).join("")}</div></div>
+          <button class="btn go" id="genBtn" style="margin-left:auto" ${gen.busy ? "disabled" : ""}>${gen.busy ? `<span class="dots">Writing questions</span>` : "Generate questions"}</button>
+        </div>
+        ${gen.err ? `<p class="err">${esc(gen.err)}</p>` : ""}
+        ${customCats.length ? `<div class="mine"><span class="muted" style="font-weight:800">Your AI rounds:</span>${customCats.map(c => `<span class="tag" style="--catc:${c.c};--catfg:${c.fg}"><button type="button" data-review="${c.id}" style="background:transparent;padding:0;font-weight:800">${esc(c.name)} · ${c.questions.length}</button><button type="button" data-delcat="${c.id}" aria-label="Delete ${esc(c.name)}">×</button></span>`).join("")}</div>` : ""}
+        ${rev ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Checking “${esc(rev.name)}”</b><button class="btn ghost" data-review="">Done</button></div>
+          <div class="review">${rev.questions.map((q,i) => `<div class="rq"><div><div class="qq">${i+1}. ${q.e ? esc(q.e)+" " : ""}${esc(q.q)}</div><div class="oo">${q.o.map((o,j) => j===q.a ? `<b>✓ ${esc(o)}</b>` : esc(o)).join(" · ")}</div></div><button type="button" data-delq="${i}" aria-label="Remove question ${i+1}">Remove</button></div>`).join("")}</div>` : ""}
+      </section>
       <div class="opts">
         <div class="seg"><span class="lbl">Questions</span><div class="row">${[10,15,20,25,30].map(n => `<button data-count="${n}" aria-pressed="${setup.count===n}">${n}</button>`).join("")}</div></div>
         <div class="seg"><span class="lbl">Seconds each</span><div class="row">${[10,15,20,30].map(n => `<button data-secs="${n}" aria-pressed="${setup.secs===n}">${n}s</button>`).join("")}</div></div>
         <div style="margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <span class="muted" style="font-weight:700">${Math.min(avail, setup.count)} questions from ${setup.cats.size} ${setup.cats.size===1?"category":"categories"}</span>
+          <span class="muted" style="font-weight:700">${Math.min(avail, setup.count)} questions from ${setup.cats.size} ${setup.cats.size===1?"category":"categories"}${avail < setup.count ? ` (only ${avail} available)` : ""}</span>
           <button class="btn go big" id="createBtn" ${setup.cats.size ? "" : "disabled"}>Create game</button>
         </div>
       </div>
@@ -835,6 +934,13 @@ setInterval(() => {
 /* ─── events ─── */
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.idea){ gen.topic = b.dataset.idea; render(); return; }
+  if (b.dataset.gcount){ gen.count = +b.dataset.gcount; render(); return; }
+  if (b.dataset.gdiff){ gen.diff = b.dataset.gdiff; render(); return; }
+  if (b.dataset.review !== undefined){ gen.review = b.dataset.review || null; render(); return; }
+  if (b.dataset.delcat){ customCats = customCats.filter(c => c.id !== b.dataset.delcat); setup.cats.delete(b.dataset.delcat); if (gen.review === b.dataset.delcat) gen.review = null; store.set("oya.custom", customCats); render(); return; }
+  if (b.dataset.delq !== undefined){ const c = customCats.find(x => x.id === gen.review); if (c){ c.questions.splice(+b.dataset.delq, 1); if (!c.questions.length){ customCats = customCats.filter(x => x !== c); setup.cats.delete(c.id); gen.review = null; } store.set("oya.custom", customCats); } render(); return; }
+  if (b.id === "genBtn"){ generateCategory(); return; }
   if (b.dataset.cat){ setup.cats.has(b.dataset.cat) ? setup.cats.delete(b.dataset.cat) : setup.cats.add(b.dataset.cat); render(); return; }
   if (b.dataset.count){ setup.count = +b.dataset.count; render(); return; }
   if (b.dataset.secs){ setup.secs = +b.dataset.secs; render(); return; }
@@ -846,7 +952,7 @@ document.addEventListener("click", e => {
   const g = S && S.game;
   switch (b.dataset.act){
     case "home": role = null; render(); break;
-    case "all": CATS.forEach(c => setup.cats.add(c.id)); render(); break;
+    case "all": allCats().forEach(c => setup.cats.add(c.id)); render(); break;
     case "none": setup.cats.clear(); render(); break;
     case "start": hostSet("question", 0); break;
     case "skip": revealing = g.q_index; hostSet("reveal", g.q_index); break;
@@ -858,6 +964,12 @@ document.addEventListener("click", e => {
     case "leave": stopWatch(); store.set("oya.player", null); playerSess = null; role = null; lastView = ""; history.replaceState(null, "", location.pathname); render(); break;
   }
 });
+
+document.addEventListener("input", e => {
+  if (e.target.id === "genTopic") gen.topic = e.target.value;
+  if (e.target.id === "genCode"){ gen.code = e.target.value; store.set("oya.hostcode", gen.code); }
+});
+document.addEventListener("keydown", e => { if (e.target.id === "genTopic" && e.key === "Enter"){ e.preventDefault(); generateCategory(); } });
 
 /* ─── sound + confetti ─── */
 let actx = null;
