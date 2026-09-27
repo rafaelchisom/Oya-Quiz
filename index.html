@@ -862,7 +862,7 @@ function renderHost(app){
         <div class="panel" style="display:flex;flex-direction:column;gap:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
             <div><div class="count">${S.players.length}</div><div class="muted" style="font-weight:800">${S.players.length===1?"player":"players"} in</div></div>
-            <button class="btn go big" data-act="start" ${S.players.length ? "" : "disabled"}>Start game</button>
+            <button class="btn go big" data-act="start" ${S.players.length ? "" : "disabled"}>Oya nau!</button>
           </div>
           <div class="players">${S.players.length ? S.players.map(p => `<span class="pchip" style="${chipStyle(p.name)}"><span class="pa">${esc(p.avatar || "🙂")}</span>${esc(p.name)}</span>`).join("") : `<p class="muted" style="margin:0">Waiting for players…</p>`}</div>
           <p class="muted" style="margin:0">${total} questions · ${g.q_seconds}s each</p>
