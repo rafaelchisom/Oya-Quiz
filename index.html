@@ -215,7 +215,7 @@ input{font:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:20}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);background:var(--sun);color:#231A00;font-weight:900;padding:12px 18px;border-radius:14px;max-width:calc(100% - 32px);z-index:21;transition:transform .3s cubic-bezier(.2,1.4,.4,1)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 60px));background:var(--sun);color:#231A00;font-weight:900;padding:12px 18px;border-radius:14px;max-width:calc(100% - 32px);z-index:21;transition:transform .3s cubic-bezier(.2,1.4,.4,1)}
 .toast.on{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -247,10 +247,7 @@ const CATS = [
   { id:"brain",  name:"Brain Teasers",    blurb:"Weird facts, quick thinking",          c:"#18DCFF", fg:"#00262E" },
   { id:"ball",   name:"Football Fever",   blurb:"World Cups, legends and big clubs",   c:"#C4E538", fg:"#1D2600" }
 ];
-let customCats = store.get("oya.custom", []);   // AI-made categories: {id,name,c,fg,blurb,questions}
-const allCats = () => CATS.concat(customCats);
 const catOf = id => allCats().find(c => c.id === id) || CATS[0];
-const allQuestions = () => BANK.concat(customCats.flatMap(k => k.questions.map(q => ({...q, c:k.id}))));
 
 const BANK = [
   // Naija Vibes
@@ -408,6 +405,10 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k, v){ try{ v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
+let customCats = store.get("oya.custom", []);   // AI-made categories: {id,name,c,fg,blurb,questions}
+if (!Array.isArray(customCats)) customCats = [];
+const allCats = () => CATS.concat(customCats);
+const allQuestions = () => BANK.concat(customCats.flatMap(k => (k.questions || []).map(q => ({...q, c:k.id}))));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); }));
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 let toastT;
@@ -1004,9 +1005,13 @@ function frame(){
 }
 
 /* ─── boot ─── */
+window.addEventListener("error", () => {
+  const app = $("app");
+  if (app && !app.children.length) app.innerHTML = `<div class="pbig wait"><h2>Something went wrong</h2><p>Refresh the page to try again.</p></div>`;
+});
 (function boot(){
   const code = new URLSearchParams(location.search).get("join");
-  if (LIVE && playerSess && (!code || code === playerSess.code)){ role = "player"; watch(playerSess.gameId); return; }
+  if (LIVE && playerSess && (!code || code === playerSess.code)){ role = "player"; render(); watch(playerSess.gameId); return; }
   render();
 })();
 </script>
