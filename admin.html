@@ -123,7 +123,7 @@ function sample(){
   const names = [["Ada","🦁"],["Tobi","🐼"],["Kemi","🦊"],["Sam","🚀"],["Jo","🎧"],["Ngozi","👑"],["Dayo","⚽"],["Ife","💃"]];
   return {
     status:"ok", sample:true, days,
-    totals:{ games:14, games_played:12, games_finished:11, remote_games:4, player_joins:74, players_left:3, unique_players:18, answers:1112, accuracy:61.4, avg_players:6.2, ai_rounds:6, all_time_games:12, all_time_players:18 },
+    totals:{ games:14, games_played:12, games_finished:11, remote_games:4, player_joins:74, players_left:3, unique_players:18, answers:1112, accuracy:61.4, avg_players:6.2, ai_rounds:6, ai_today:3, all_time_games:12, all_time_players:18 },
     per_day,
     categories:[
       {name:"Naija Vibes",games:11,answers:198,accuracy:74,avg_secs:6.1},{name:"Afrobeats",games:10,answers:176,accuracy:69,avg_secs:5.4},
@@ -217,7 +217,7 @@ function render(){
       <div class="kpi"><span class="l">People</span><span class="v">${nf(t.unique_players)}</span><span class="s">${nf(t.player_joins)} joins · avg ${t.avg_players ?? 0} per game</span></div>
       <div class="kpi"><span class="l">Answers</span><span class="v">${nf(t.answers)}</span><span class="s">${pct(t.accuracy)} correct overall</span></div>
       <div class="kpi"><span class="l">Remote games</span><span class="v">${nf(t.remote_games)}</span><span class="s">${t.games_played ? Math.round(100 * t.remote_games / t.games_played) : 0}% of games</span></div>
-      <div class="kpi"><span class="l">AI rounds</span><span class="v">${nf(t.ai_rounds)}</span><span class="s">${nf(t.players_left)} players left mid-game</span></div>
+      <div class="kpi"><span class="l">AI rounds</span><span class="v">${nf(t.ai_rounds)}</span><span class="s">${nf(t.ai_today ?? 0)} free rounds used today</span></div>
     </div>
     <section class="card">
       <h2>Games per day</h2><p class="sub">Last ${d.days} days · ${nf(t.all_time_games)} games and ${nf(t.all_time_players)} people all time</p>
