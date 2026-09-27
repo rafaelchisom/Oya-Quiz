@@ -435,6 +435,8 @@ if (!Array.isArray(customCats)) customCats = [];
 const allCats = () => CATS.concat(customCats);
 const allQuestions = () => BANK.concat(customCats.flatMap(k => (k.questions || []).map(q => ({...q, c:k.id}))));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); }));
+let deviceId = store.get("oya.device", null);
+if (!deviceId){ deviceId = uuid(); store.set("oya.device", deviceId); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 let toastT;
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2600); }
@@ -470,7 +472,9 @@ function liveApi(){
     hostSet: (id, token, status, idx) => rpc("quiz_host_set", { p_game: id, p_token: token, p_status: status, p_index: idx }),
     answer: (pid, token, idx, choice) => rpc("quiz_answer", { p_player: pid, p_token: token, p_q_index: idx, p_choice: choice }),
     async generate(topic, count, difficulty, hostCode){
-      const { data, error } = await sb.functions.invoke("generate-quiz", { body: { topic, count, difficulty }, headers: { "x-host-code": hostCode || "" } });
+      const headers = { "x-device-id": deviceId };
+      if (hostCode) headers["x-host-code"] = hostCode;
+      const { data, error } = await sb.functions.invoke("generate-quiz", { body: { topic, count, difficulty }, headers });
       if (error){
         let code = "server_error";
         try { const b = await error.context.json(); code = b.error || code; } catch(e){ if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") code = "no_function"; }
@@ -559,7 +563,7 @@ let hostSess = store.get("oya.host", null);      // { gameId, token, code }
 let playerSess = store.get("oya.player", null);  // { gameId, playerId, token, name, code }
 let confirm = null;   // "leave" | "end" while an inline confirm is showing
 const setup = { remote: store.get("oya.remote", false), cats: new Set(CATS.map(c => c.id).concat(customCats.map(c => c.id))), count: 15, secs: 20 };
-const gen = { topic:"", count:10, diff:"medium", busy:false, err:"", review:null, code: store.get("oya.hostcode","") };
+const gen = { topic:"", count:10, diff:"medium", busy:false, err:"", review:null, code: store.get("oya.hostcode",""), showCode:false, left:null };
 const IDEAS = ["Premier League 2000s","Nollywood classics","Big Brother Naija","90s cartoons","Marvel movies","Nigerian slang","Beyoncé","Harry Potter","Anime","UK rap"];
 
 async function generateCategory(){
@@ -570,7 +574,11 @@ async function generateCategory(){
     const r = await api.generate(topic, gen.count, gen.diff, gen.code);
     const msg = {
       demo: "AI questions work on your hosted version (with Supabase). This preview can't reach it.",
-      wrong_code: "That host passcode doesn't match. Check QUIZ_HOST_CODE in Supabase.",
+      wrong_code: "That host code doesn't match. Check it, or remove it to use the free daily rounds.",
+      user_limit: "You've used your free AI rounds for today. Come back tomorrow, or play the built-in categories.",
+      network_limit: "This network has used its free AI rounds for today. Come back tomorrow, or play the built-in categories.",
+      site_limit: "AI rounds are all used up for today. Come back tomorrow, or play the built-in categories.",
+      limits_unavailable: "AI rounds are paused right now. Try again later.",
       no_api_key: "The AI key isn't set yet. Add OPENAI_API_KEY in Supabase Edge Function secrets.",
       no_function: "The generate-quiz function isn't deployed yet. See the setup steps.",
       bad_topic: "Try a slightly longer topic.",
@@ -578,12 +586,14 @@ async function generateCategory(){
       empty: "The AI didn't return usable questions. Try rewording the topic.",
       server_error: "Something went wrong generating questions. Try again."
     }[r.error];
+    if (r.error === "wrong_code"){ gen.code = ""; store.set("oya.hostcode", ""); }
     if (msg){ gen.err = msg; return; }
     const [c, fg] = CHIP[(customCats.length + 3) % CHIP.length];
     const cat = { id: "ai" + Date.now().toString(36), name: r.name || topic.slice(0,24), blurb: `AI round: ${topic}`, c, fg, questions: r.questions };
     customCats.push(cat); store.set("oya.custom", customCats);
     setup.cats.add(cat.id); gen.review = cat.id; gen.topic = "";
-    toast(`${r.questions.length} questions added. Check them below.`);
+    gen.left = r.host ? null : (typeof r.left === "number" ? r.left : null);
+    toast(`${r.questions.length} questions added.${gen.left !== null ? ` ${gen.left} free AI ${gen.left===1?"round":"rounds"} left today.` : ""}`);
   }catch(e){ gen.err = "Couldn't reach the AI. Check your connection and try again."; }
   finally{ gen.busy = false; render(); }
 }
@@ -776,10 +786,7 @@ function renderSetup(app){
       </div>
       <section class="ai" aria-labelledby="aiH">
         <div><h3 id="aiH">Make a category with AI</h3><p class="muted" style="margin:4px 0 0">Type any topic and get a fresh round of questions. Check them before you play; AI can get facts wrong.</p></div>
-        <div class="grid">
-          <div class="field"><label for="genTopic">Topic</label><input id="genTopic" maxlength="80" placeholder="e.g. Arsenal legends, Nollywood, 2000s R&B" value="${esc(gen.topic)}" ${gen.busy ? "disabled" : ""}></div>
-          <div class="field"><label for="genCode">Host passcode</label><input id="genCode" type="password" maxlength="60" placeholder="From Supabase secrets" value="${esc(gen.code)}" autocomplete="off"></div>
-        </div>
+        <div class="field"><label for="genTopic">Topic</label><input id="genTopic" maxlength="80" placeholder="e.g. Arsenal legends, Nollywood, 2000s R&B" value="${esc(gen.topic)}" ${gen.busy ? "disabled" : ""}></div>
         <div class="chips">${IDEAS.map(t => `<button type="button" data-idea="${esc(t)}">${esc(t)}</button>`).join("")}</div>
         <div class="opts" style="align-items:center">
           <div class="seg"><span class="lbl">How many</span><div class="row">${[5,10,15].map(n => `<button data-gcount="${n}" aria-pressed="${gen.count===n}">${n}</button>`).join("")}</div></div>
@@ -787,6 +794,14 @@ function renderSetup(app){
           <button class="btn go" id="genBtn" style="margin-left:auto" ${gen.busy ? "disabled" : ""}>${gen.busy ? `<span class="dots">Writing questions</span>` : "Generate questions"}</button>
         </div>
         ${gen.err ? `<p class="err">${esc(gen.err)}</p>` : ""}
+        <div class="muted" style="font-size:14px;font-weight:700;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          ${gen.code
+            ? `<span>Host code on: unlimited AI rounds on this device.</span><button type="button" class="leave" data-act="clearCode">Remove</button>`
+            : `<span>${gen.left !== null ? `${gen.left} free AI ${gen.left===1?"round":"rounds"} left today.` : "Free to use, with a few AI rounds per day."}</span>
+               ${gen.showCode
+                 ? `<span style="display:flex;gap:6px;align-items:center"><input id="genCode" type="password" maxlength="60" placeholder="Host code" autocomplete="off" style="border:2px solid var(--line);background:var(--night);color:var(--text);border-radius:10px;padding:6px 10px;font-weight:800;width:160px"><button type="button" class="btn" data-act="saveCode" style="padding:6px 12px;font-size:14px">Save</button></span>`
+                 : `<button type="button" class="leave" data-act="showCode">Have a host code?</button>`}`}
+        </div>
         ${customCats.length ? `<div class="mine"><span class="muted" style="font-weight:800">Your AI rounds:</span>${customCats.map(c => `<span class="tag" style="--catc:${c.c};--catfg:${c.fg}"><button type="button" data-review="${c.id}" style="background:transparent;padding:0;font-weight:800">${esc(c.name)} · ${c.questions.length}</button><button type="button" data-delcat="${c.id}" aria-label="Delete ${esc(c.name)}">×</button></span>`).join("")}</div>` : ""}
         ${rev ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Checking “${esc(rev.name)}”</b><button class="btn ghost" data-review="">Done</button></div>
           <div class="review">${rev.questions.map((q,i) => `<div class="rq"><div><div class="qq">${i+1}. ${q.e ? esc(q.e)+" " : ""}${esc(q.q)}</div><div class="oo">${q.o.map((o,j) => j===q.a ? `<b>✓ ${esc(o)}</b>` : esc(o)).join(" · ")}</div></div><button type="button" data-delq="${i}" aria-label="Remove question ${i+1}">Remove</button></div>`).join("")}</div>` : ""}
@@ -1039,6 +1054,9 @@ document.addEventListener("click", e => {
   const g = S && S.game;
   switch (b.dataset.act){
     case "home": role = null; render(); break;
+    case "showCode": gen.showCode = true; render(); setTimeout(() => $("genCode") && $("genCode").focus(), 0); break;
+    case "saveCode": { const v = ($("genCode").value || "").trim(); if (!v) break; gen.code = v; gen.showCode = false; gen.err = ""; store.set("oya.hostcode", v); render(); toast("Host code saved on this device."); break; }
+    case "clearCode": gen.code = ""; store.set("oya.hostcode", ""); render(); break;
     case "askLeave": confirm = "leave"; render(); break;
     case "askEnd": confirm = "end"; render(); break;
     case "noConfirm": confirm = null; render(); break;
@@ -1059,9 +1077,12 @@ document.addEventListener("click", e => {
 
 document.addEventListener("input", e => {
   if (e.target.id === "genTopic") gen.topic = e.target.value;
-  if (e.target.id === "genCode"){ gen.code = e.target.value; store.set("oya.hostcode", gen.code); }
+
 });
-document.addEventListener("keydown", e => { if (e.target.id === "genTopic" && e.key === "Enter"){ e.preventDefault(); generateCategory(); } });
+document.addEventListener("keydown", e => {
+  if (e.target.id === "genTopic" && e.key === "Enter"){ e.preventDefault(); generateCategory(); }
+  if (e.target.id === "genCode" && e.key === "Enter"){ e.preventDefault(); document.querySelector('[data-act="saveCode"]').click(); }
+});
 
 /* ─── sound + confetti ─── */
 let actx = null;
