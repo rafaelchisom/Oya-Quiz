@@ -627,7 +627,8 @@ async function createGame(){
   while (added){ added = false; for (const k of shuffle(Object.keys(byCat))){ const q = byCat[k].shift(); if (q){ mixed.push(q); added = true; } } }
   const picked = mixed.slice(0, setup.count).map(q => {
     const order = shuffle([0,1,2,3]);
-    return { c:q.c, q:q.q, o:order.map(i => q.o[i]), a:order.indexOf(q.a), e:q.e || null, f:q.f || null };
+    const ai = customCats.find(k => k.id === q.c);
+    return { c:q.c, cn: ai ? ai.name : null, q:q.q, o:order.map(i => q.o[i]), a:order.indexOf(q.a), e:q.e || null, f:q.f || null };
   });
   const token = uuid();
   $("createBtn").disabled = true;
