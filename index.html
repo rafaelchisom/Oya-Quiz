@@ -265,6 +265,37 @@ input{font:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:20}
+/* How to play */
+.hero-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.nopin{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--night-2);border:2px dashed var(--sun);border-radius:18px;padding:14px 18px}
+.nopin p{margin:0;font-weight:800;font-size:16px;max-width:60ch}
+.nopin p b{color:var(--sun)}
+.linkbtn{border:0;background:none;padding:0;color:var(--sun);font-weight:900;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:inherit}
+.howto-veil{position:fixed;inset:0;z-index:30;background:rgba(42,31,20,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(24px, env(safe-area-inset-top,0px)) 16px 24px;overflow-y:auto;animation:fadein .2s ease both}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.howto{width:100%;max-width:760px;background:var(--night-2);border:1px solid var(--line);border-radius:26px;padding:26px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(42,31,20,.35);animation:popin .35s cubic-bezier(.2,1.4,.4,1) both}
+.howto-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.howto h2{font-family:var(--display);font-weight:400;font-size:clamp(32px,6vw,44px);line-height:1;margin:0}
+.howto .lede{margin:6px 0 0;color:var(--muted);font-weight:700;font-size:17px}
+.xbtn{border:2px solid var(--line);background:var(--night);border-radius:12px;width:44px;height:44px;font-size:22px;font-weight:900;line-height:1;flex:none;cursor:pointer;color:var(--text)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:step}
+.steps li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;align-items:start;background:var(--night);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+.steps .num{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-family:var(--display);font-size:28px;color:#fff}
+.steps h3{margin:2px 0 4px;font-family:var(--display);font-weight:400;font-size:24px;line-height:1.1}
+.steps p{margin:0;color:var(--text);font-size:16px;line-height:1.45}
+.steps .who{display:inline-block;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.tips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.tips{grid-template-columns:minmax(0,1fr)}}
+.tip{background:var(--night-3);border-radius:16px;padding:14px 16px}
+.tip b{display:block;font-size:16px;margin-bottom:4px}
+.tip p{margin:0;font-size:15px;line-height:1.45;color:var(--text)}
+.howto-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.nudge{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;width:min(560px,calc(100% - 32px));background:var(--text);color:var(--night);border-radius:20px;padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 18px 50px rgba(42,31,20,.35);animation:nudgein .45s cubic-bezier(.2,1.4,.4,1) .6s both}
+@keyframes nudgein{from{transform:translate(-50%,140%)}to{transform:translate(-50%,0)}}
+.nudge p{margin:0;font-weight:800;font-size:16px;flex:1 1 220px}
+.nudge p span{display:block;font-weight:700;font-size:14px;opacity:.8}
+.nudge .btn{padding:10px 16px;font-size:15px}
+.nudge .later{border:0;background:none;color:var(--night);font-weight:800;text-decoration:underline;cursor:pointer;font-size:14px;padding:8px}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 60px));background:var(--sun);color:var(--on-sun);font-weight:900;padding:12px 18px;border-radius:14px;max-width:calc(100% - 32px);z-index:21;transition:transform .3s cubic-bezier(.2,1.4,.4,1)}
 .toast.on{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -716,6 +747,7 @@ setInterval(hostTick, 250);
 async function joinGame(code, name){
   const err = $("joinErr");
   if (!LIVE){ err.textContent = "Joining works once the game is hosted with Supabase. In this preview, try hosting instead."; return; }
+  if (!code){ err.innerHTML = `Enter the game PIN from the host’s screen. No PIN yet? Someone has to host first. <button type="button" class="linkbtn" data-act="howto">How to play</button>`; return; }
   if (!/^\d{6}$/.test(code)){ err.textContent = "The game PIN is 6 digits."; return; }
   if (!name){ err.textContent = "Add your name so the host can see you."; return; }
   const token = uuid();
@@ -724,7 +756,11 @@ async function joinGame(code, name){
     store.set("oya.avatar", myAvatar);
     const r = await api.join(code, name, token, myAvatar);
     const msg = { no_game:"No game with that PIN. Check the big screen.", finished:"That game has finished.", name_taken:"Someone's already using that name. Try another.", bad_name:"Names can be up to 24 characters.", full:"This game is full." }[r.status];
-    if (msg){ err.textContent = msg; $("joinBtn").disabled = false; return; }
+    if (msg){
+      err.textContent = msg;
+      if (r.status === "no_game"){ err.insertAdjacentHTML("beforeend", ` Games are created by the host, who gets the PIN. <button type="button" class="linkbtn" data-act="howto">How to play</button>`); }
+      $("joinBtn").disabled = false; return;
+    }
     playerSess = { gameId: r.game_id, playerId: r.player_id, token, name, code };
     store.set("oya.player", playerSess);
     role = "player"; watch(r.game_id);
@@ -755,6 +791,7 @@ async function answer(choice){
 /* ─── RENDER ─── */
 function render(){
   const app = $("app");
+  if (role) $("nudge")?.remove();
   if (!role) return renderLanding(app);
   if (role === "setup") return renderSetup(app);
   if (!S) { app.innerHTML = `<div class="pbig wait"><div class="spinner"></div><p>Connecting…</p></div>`; return; }
@@ -770,7 +807,12 @@ function renderLanding(app){
     <section class="hero">
       <h1 class="logo">${logo()}</h1>
       <p>A quiz game for the whole room. The big screen asks, everyone answers on their phone, and the quickest right answers win.</p>
+      <div class="hero-row"><button class="btn" data-act="howto">How to play</button></div>
     </section>
+    ${code ? "" : `<div class="nopin" role="note">
+      <p>No PIN yet? <b>Someone has to host a game first.</b> The host sets it up on a laptop or TV, and the PIN appears on their screen.</p>
+      <button class="linkbtn" data-act="howto">See how it works</button>
+    </div>`}
     ${LIVE ? "" : `<div class="banner" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><span>Preview mode: host a game to try it with bot players. Add your Supabase details in <b>CONFIG</b> so friends can join from their phones.</span><button class="btn" data-act="demoPodium" style="background:var(--night);color:var(--text);box-shadow:none;padding:8px 14px">See the podium dance</button></div>`}
     <div class="choose">
       <form class="panel" id="joinForm">
@@ -784,7 +826,7 @@ function renderLanding(app){
       </form>
       <div class="panel">
         <h2>Host on the big screen</h2>
-        <p class="muted" style="margin:0">Pick the categories, put this on the TV or laptop, and share the PIN.</p>
+        <p class="muted" style="margin:0">Start here if nobody has a PIN yet. Pick the categories, put this on the TV or laptop, and share the PIN with everyone.</p>
         <button class="btn big" id="toSetup">Set up a game</button>
         ${canResume ? `<button class="btn ghost" id="resumeHost">Back to game ${esc(hostSess.code)}</button>` : ""}
       </div>
@@ -796,13 +838,64 @@ function renderLanding(app){
   });
   $("codeIn").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g,""); });
   if (code && !$("nameIn").value) $("nameIn").focus();
+  // First visit (and not arriving from a join link): offer the quick guide.
+  if (!code && !store.get("oya.seenHowTo", false) && !document.getElementById("nudge")){
+    const n = document.createElement("div");
+    n.className = "nudge"; n.id = "nudge"; n.setAttribute("role", "dialog"); n.setAttribute("aria-label", "New to Oya Quiz?");
+    n.innerHTML = `<p>New to Oya Quiz?<span>See how to host and join in 30 seconds.</span></p><div style="display:flex;gap:6px;align-items:center"><button class="later" data-act="nudgeOff">No thanks</button><button class="btn go" data-act="howto">Show me</button></div>`;
+    document.body.appendChild(n);
+  }
+}
+
+/* ─── How to play ─── */
+let howtoReturn = null;
+function openHowTo(){
+  store.set("oya.seenHowTo", true);
+  $("nudge")?.remove();
+  if ($("howtoVeil")) return;
+  howtoReturn = document.activeElement;
+  const v = document.createElement("div");
+  v.className = "howto-veil"; v.id = "howtoVeil";
+  v.innerHTML = `<div class="howto" role="dialog" aria-modal="true" aria-labelledby="howtoTitle">
+    <div class="howto-top">
+      <div><h2 id="howtoTitle">How to play</h2><p class="lede">One person hosts, everyone else joins with a PIN.</p></div>
+      <button class="xbtn" data-act="howtoClose" aria-label="Close how to play">×</button>
+    </div>
+    <ol class="steps">
+      <li><span class="num" style="background:var(--a)" aria-hidden="true">1</span><div><span class="who">The host</span><h3>Set up a game</h3><p>On a laptop or TV, open <b>oyaquiz.com</b>, tap <b>Set up a game</b>, pick your categories, then <b>Create game</b>. The host doesn’t need a PIN.</p></div></li>
+      <li><span class="num" style="background:var(--b)" aria-hidden="true">2</span><div><span class="who">The host</span><h3>Share the PIN</h3><p>A 6-digit PIN and a QR code appear on the big screen. Read the PIN out, or let people scan the QR code.</p></div></li>
+      <li><span class="num" style="background:var(--c);color:var(--c-fg)" aria-hidden="true">3</span><div><span class="who">Everyone else</span><h3>Join on your phone</h3><p>Scan the QR code, or open oyaquiz.com and type the PIN. Add your name, pick a mood, and tap <b>Let’s go</b>. Your name pops up on the big screen.</p></div></li>
+      <li><span class="num" style="background:var(--d)" aria-hidden="true">4</span><div><span class="who">Everyone</span><h3>Oya nau!</h3><p>When everyone’s in, the host taps <b>Oya nau!</b> Questions show on the big screen; tap your answer on your phone. Right and fast scores the most, and answer streaks earn bonus points.</p></div></li>
+    </ol>
+    <div class="tips">
+      <div class="tip"><b>Not in the same room?</b><p>When setting up, choose <b>Remote</b>. Everyone sees the questions on their own phone, so you just share the link in the group chat.</p></div>
+      <div class="tip"><b>Want to play as the host too?</b><p>Keep the game on the laptop, then join from your phone with the PIN like everyone else.</p></div>
+      <div class="tip"><b>Do I need an app?</b><p>No. It all works in the browser on any phone or laptop.</p></div>
+      <div class="tip"><b>Fancy a custom round?</b><p>On the setup screen, type any topic under <b>Make a category with AI</b> and get fresh questions.</p></div>
+    </div>
+    <div class="howto-actions">
+      <button class="btn ghost" data-act="howtoHavePin">I have a PIN</button>
+      <button class="btn go" data-act="howtoHost">Host a game now</button>
+    </div>
+  </div>`;
+  document.body.appendChild(v);
+  document.body.style.overflow = "hidden";
+  v.addEventListener("click", e => { if (e.target === v) closeHowTo(); });
+  v.querySelector(".xbtn").focus();
+}
+function closeHowTo(focusPin){
+  const v = $("howtoVeil"); if (!v) return;
+  v.remove(); document.body.style.overflow = "";
+  if (focusPin && $("codeIn")) $("codeIn").focus();
+  else if (howtoReturn && document.contains(howtoReturn)) howtoReturn.focus();
 }
 
 function renderSetup(app){
+  $("nudge")?.remove();
   const avail = allQuestions().filter(q => setup.cats.has(q.c)).length;
   const rev = customCats.find(c => c.id === gen.review);
   app.innerHTML = `
-    <div class="topbar"><h1 class="logo">${logo()}</h1><button class="btn ghost" data-act="home">Back</button></div>
+    <div class="topbar"><h1 class="logo">${logo()}</h1><div style="display:flex;gap:8px"><button class="btn ghost" data-act="howto">How to play</button><button class="btn ghost" data-act="home">Back</button></div></div>
     <div class="panel" style="display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
         <div><h2 class="logo" style="font-size:34px">Pick your categories</h2><p class="muted" style="margin:6px 0 0">Tap to switch a category on or off. Questions get mixed across the ones you pick.</p></div>
@@ -1092,6 +1185,11 @@ document.addEventListener("click", e => {
   const g = S && S.game;
   switch (b.dataset.act){
     case "home": role = null; render(); break;
+    case "howto": openHowTo(); break;
+    case "howtoClose": closeHowTo(); break;
+    case "howtoHavePin": closeHowTo(true); break;
+    case "howtoHost": closeHowTo(); role = "setup"; render(); window.scrollTo(0, 0); break;
+    case "nudgeOff": store.set("oya.seenHowTo", true); $("nudge")?.remove(); break;
     case "demoPodium": {
       if (LIVE) break;
       const ppl = [["Tobi","bigboss",9420],["Kemi","sideeye",8870],["Ada","maincharacter",8310],["Sam","unbothered",6200],["Jo","cryinglaugh",5100]]
@@ -1127,6 +1225,13 @@ document.addEventListener("input", e => {
 
 });
 document.addEventListener("keydown", e => {
+  const v = $("howtoVeil");
+  if (v && e.key === "Escape"){ e.preventDefault(); closeHowTo(); return; }
+  if (v && e.key === "Tab"){
+    const f = [...v.querySelectorAll("button")]; const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
   if (e.target.id === "genTopic" && e.key === "Enter"){ e.preventDefault(); generateCategory(); }
   if (e.target.id === "genCode" && e.key === "Enter"){ e.preventDefault(); document.querySelector('[data-act="saveCode"]').click(); }
 });
